@@ -100,7 +100,7 @@ export let chats: Chat[] = [
     ],
     messages: [
       { id: "msg5", chatId: "chat2", senderId: "user3", content: "Olá equipe, qual é o status da nova funcionalidade?", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
-      { id: "msg6", chatId: "chat2", senderId: "user4", content: "Enviei as últimas atualizações para a branch de desenvolvimento.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString(), read: true, reactions: { '🚀': 1 }, type: 'text' },
+      { id: "msg6", chatId: "chat2", senderId: "user4", content: "Enviei as últimas atualizações para a branch de desenvolvimento.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
       { id: "msg7", chatId: "chat2", senderId: "user1", content: "Ótimo, vou revisar hoje à tarde.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 10 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
       { id: "msg_link_2", chatId: "chat2", senderId: "user3", content: "Perfeito. Quem precisar de acesso ao Figma, o link é este: https://www.figma.com/files", timestamp: new Date(now.getTime() - 5 * 60000).toISOString(), read: false, reactions: {}, type: 'text' },
     ],
@@ -327,4 +327,18 @@ export function forwardMessage(message: Message, targetChatIds: string[]) {
       chat.messages.push(newMessage);
     }
   });
+}
+
+export function addReaction(chatId: string, messageId: string, emoji: string) {
+  const chat = chats.find(c => c.id === chatId);
+  if (!chat) return;
+
+  const message = chat.messages.find(m => m.id === messageId);
+  if (!message) return;
+
+  if (!message.reactions) {
+    message.reactions = {};
+  }
+
+  message.reactions[emoji] = (message.reactions[emoji] || 0) + 1;
 }

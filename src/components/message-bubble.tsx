@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
-import { Message as MessageType } from "@/lib/data";
+import { Message as MessageType, addReaction } from "@/lib/data";
 import { format } from "date-fns";
 import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download, Reply, Forward } from "lucide-react";
 import {
@@ -54,6 +54,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
   }, []);
 
   const handleReaction = (emoji: string) => {
+    addReaction(message.chatId, message.id, emoji);
     setReactions(prev => ({
       ...prev,
       [emoji]: (prev[emoji] || 0) + 1,
