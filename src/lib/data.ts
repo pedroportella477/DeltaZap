@@ -91,6 +91,13 @@ export type SupportMaterial = {
   timestamp: string;
 };
 
+export type InternalLink = {
+  id: string;
+  title: string;
+  url: string;
+  timestamp: string;
+};
+
 export const users: User[] = [
   { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
   { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
@@ -163,6 +170,21 @@ export let supportMaterials: SupportMaterial[] = [
     content: 'Certifique-se de que o servidor Openfire está em execução. Use seu JID completo (usuario@servidor) e senha para fazer login. O endereço do servidor websocket é configurado para ws://localhost:7070/ws-xmpp por padrão.',
     timestamp: new Date().toISOString(),
   }
+];
+
+export let internalLinks: InternalLink[] = [
+    {
+        id: `intlink1`,
+        title: 'Portal de Colaboradores',
+        url: 'https://intranet.empresa.com',
+        timestamp: new Date().toISOString(),
+    },
+    {
+        id: `intlink2`,
+        title: 'Sistema de Ponto Eletrônico',
+        url: 'https://ponto.empresa.com',
+        timestamp: new Date().toISOString(),
+    }
 ];
 
 const MAX_NOTES = 200;
@@ -393,4 +415,37 @@ export function deleteSupportMaterial(id: string) {
     return true;
   }
   return false;
+}
+
+export function getInternalLinks(): InternalLink[] {
+  return internalLinks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export function addInternalLink(title: string, url: string) {
+  const newLink: InternalLink = {
+    id: `intlink${Date.now()}`,
+    title,
+    url,
+    timestamp: new Date().toISOString(),
+  };
+  internalLinks.unshift(newLink);
+  return newLink;
+}
+
+export function updateInternalLink(id: string, title: string, url: string) {
+    const index = internalLinks.findIndex(l => l.id === id);
+    if (index > -1) {
+        internalLinks[index] = { ...internalLinks[index], title, url };
+        return internalLinks[index];
+    }
+    return null;
+}
+
+export function deleteInternalLink(id: string) {
+    const index = internalLinks.findIndex(l => l.id === id);
+    if (index > -1) {
+        internalLinks.splice(index, 1);
+        return true;
+    }
+    return false;
 }
