@@ -18,9 +18,11 @@ interface MessageBubbleProps {
   message: MessageType & { sender: ReturnType<typeof users.find> };
 }
 
-const isImageURL = (url: string) => {
-    return url.startsWith('https://placehold.co');
+const isMediaURL = (url: string): boolean => {
+  if (typeof url !== 'string') return false;
+  return url.startsWith('https://media.giphy.com/') || url.startsWith('https://placehold.co/');
 };
+
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
@@ -39,7 +41,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     "😄": <Smile className="h-4 w-4 text-yellow-500 fill-current" />,
   }
 
-  const isMedia = isImageURL(message.content);
+  const isMedia = isMediaURL(message.content);
 
   return (
     <div
@@ -59,9 +61,11 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         <Popover>
           <PopoverTrigger asChild>
             <div
-              className={cn("max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-3 py-2 shadow-md", {
-                "bg-primary text-primary-foreground": isYou,
-                "bg-card": !isYou,
+              className={cn("max-w-xs md:max-w-md lg:max-w-lg rounded-lg shadow-md", {
+                "bg-primary text-primary-foreground": isYou && !isMedia,
+                "bg-card": !isYou && !isMedia,
+                "p-0 bg-transparent": isMedia,
+                "px-3 py-2": !isMedia,
               })}
             >
               {!isYou && message.sender && !isMedia && (
@@ -74,26 +78,29 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                   alt="sent media"
                   width={200}
                   height={200}
-                  className="rounded-md"
+                  className="rounded-md object-cover"
+                  unoptimized
                 />
               ) : (
                 <p className="text-sm break-words">{message.content}</p>
               )}
 
-              <div className="flex items-center justify-end gap-2 mt-1">
-                <p className="text-xs opacity-70">
-                  {format(new Date(message.timestamp), "HH:mm")}
-                </p>
-                {isYou &&
-                  (message.read ? (
-                    <CheckCheck className="h-4 w-4 text-accent" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  ))}
-              </div>
+              {!isMedia && (
+                <div className="flex items-center justify-end gap-2 mt-1">
+                  <p className="text-xs opacity-70">
+                    {format(new Date(message.timestamp), "HH:mm")}
+                  </p>
+                  {isYou &&
+                    (message.read ? (
+                      <CheckCheck className="h-4 w-4 text-accent" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    ))}
+                </div>
+              )}
             </div>
           </PopoverTrigger>
-          <PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
+          {!isMedia && (<PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
             <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleReaction('❤️')}>
                    <Heart className="h-5 w-5 text-muted-foreground hover:text-red-500 hover:fill-current" />
@@ -105,10 +112,10 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                    <Smile className="h-5 w-5 text-muted-foreground hover:text-yellow-500 hover:fill-current" />
                 </Button>
             </div>
-          </PopoverContent>
+          </PopoverContent>)}
         </Popover>
 
-        {Object.keys(reactions).length > 0 && (
+        {Object.keys(reactions).length > 0 && !isMedia && (
              <div className="absolute -bottom-3 right-1 flex items-center gap-1 rounded-full bg-background border px-1.5 py-0.5 shadow-sm text-xs">
                  {Object.entries(reactions).map(([emoji, count]) => (
                     <span key={emoji} className="flex items-center gap-0.5">

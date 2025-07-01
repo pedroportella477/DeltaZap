@@ -19,12 +19,39 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+
 
 type ChatData = NonNullable<ReturnType<typeof getChatData>>;
 
-const emojis = ['😀', '😂', '❤️', '👍', '🤔', '🎉', '🔥', '🙏', '😊', '😭', '🤯', '😱'];
-const gifs = Array.from({ length: 12 }, () => `https://placehold.co/100x100.png`);
-const stickers = Array.from({ length: 12 }, () => `https://placehold.co/100x100.png`);
+const gifs = [
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7btNa0RUYa5E7iiQ/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o6Zt481isNVuQI1l6/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l3q2K5jinAlChoCLS/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l1J9R1i2a0p2m3bPO/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ohs4w0U375xOua2w8/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/13zeE9qQNC52Eg/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d3mlE7uhX8KFgEmY/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT0xeJpnr35ZJ8hOUo/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/oB1vU6BHe288g/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/9GimADsC3kEVO/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26n6Gx9moCgs1pUuk/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/11sBLVxNs7v6WA/giphy.gif",
+];
+const stickers = [
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/l41lH4ADK37AANM0U/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7abBUNCB4lT6dAhO/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/l41lI4bYmcsbOK6ha/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKLz4GIZdY9cZ0Y/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKS54g2eck2gG52/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKWJpFZG2ASb9w4/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKUM6e3y2o2T3m8/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKV5eqA2S31wT84/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKGRWN4x2Sg1yBq/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKUYX23AGB52Yy4/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7TKsWde3Ge2qA2I0/giphy.gif",
+  "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/l4pTfx2qLszoacZRS/giphy.gif",
+];
 
 export default function ChatDetailPage() {
   const params = useParams();
@@ -115,6 +142,11 @@ export default function ChatDetailPage() {
       }
     }, 2000);
   };
+  
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+  };
+
 
   if (!chatData) {
     return (
@@ -180,22 +212,17 @@ export default function ChatDetailPage() {
                             <TabsTrigger value="sticker">Stickers</TabsTrigger>
                         </TabsList>
                         <TabsContent value="emoji" className="p-2">
-                            <div className="grid grid-cols-8 gap-1">
-                                {emojis.map((emoji) => (
-                                    <Button
-                                        key={emoji}
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setNewMessage((prev) => prev + emoji)}
-                                        className="text-xl"
-                                    >
-                                        {emoji}
-                                    </Button>
-                                ))}
-                            </div>
+                           <EmojiPicker
+                              onEmojiClick={onEmojiClick}
+                              width="100%"
+                              height={350}
+                              skinTonesDisabled
+                              searchDisabled
+                              previewConfig={{showPreview: false}}
+                            />
                         </TabsContent>
                         <TabsContent value="gif" className="p-2">
-                            <ScrollArea className="h-60">
+                            <ScrollArea className="h-[350px]">
                                 <div className="grid grid-cols-3 gap-2">
                                     {gifs.map((gif, index) => (
                                         <button
@@ -203,14 +230,14 @@ export default function ChatDetailPage() {
                                             onClick={() => handleSendMessage(gif)}
                                             className="rounded-md overflow-hidden focus:ring-2 focus:ring-ring"
                                         >
-                                            <Image src={gif} width={100} height={100} alt={`gif ${index+1}`} data-ai-hint="gif funny" />
+                                            <Image src={gif} width={100} height={100} alt={`gif ${index+1}`} data-ai-hint="gif funny" unoptimized />
                                         </button>
                                     ))}
                                 </div>
                             </ScrollArea>
                         </TabsContent>
                         <TabsContent value="sticker" className="p-2">
-                            <ScrollArea className="h-60">
+                            <ScrollArea className="h-[350px]">
                                 <div className="grid grid-cols-3 gap-2">
                                     {stickers.map((sticker, index) => (
                                         <button
@@ -218,7 +245,7 @@ export default function ChatDetailPage() {
                                             onClick={() => handleSendMessage(sticker)}
                                             className="rounded-md overflow-hidden focus:ring-2 focus:ring-ring"
                                         >
-                                            <Image src={sticker} width={100} height={100} alt={`sticker ${index+1}`} data-ai-hint="sticker cute" />
+                                            <Image src={sticker} width={100} height={100} alt={`sticker ${index+1}`} data-ai-hint="sticker cute" unoptimized/>
                                         </button>
                                     ))}
                                 </div>
