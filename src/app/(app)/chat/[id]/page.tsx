@@ -186,7 +186,7 @@ export default function ChatDetailPage() {
       <ScrollArea className="flex-grow" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
           {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble key={message.id} message={message} chatType={chatData.type} />
           ))}
         </div>
       </ScrollArea>

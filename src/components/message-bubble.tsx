@@ -16,6 +16,7 @@ import Image from 'next/image';
 
 interface MessageBubbleProps {
   message: MessageType & { sender: ReturnType<typeof users.find> };
+  chatType: 'group' | 'individual';
 }
 
 const isMediaURL = (url: string): boolean => {
@@ -24,7 +25,7 @@ const isMediaURL = (url: string): boolean => {
 };
 
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+export default function MessageBubble({ message, chatType }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
   const isYou = message.senderId === "user1";
 
@@ -68,7 +69,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 "px-3 py-2": !isMedia,
               })}
             >
-              {!isYou && message.sender && !isMedia && (
+              {!isYou && chatType === 'group' && message.sender && !isMedia && (
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               
