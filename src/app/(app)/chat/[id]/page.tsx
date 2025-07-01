@@ -7,10 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getChatData, Message as MessageType } from "@/lib/data";
+import { getChatData, Message as MessageType, users } from "@/lib/data";
 import { ArrowLeft, MoreVertical, Send, Smile } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
+import { useToast } from "@/hooks/use-toast";
 
 type ChatData = NonNullable<ReturnType<typeof getChatData>>;
 
@@ -21,6 +22,7 @@ export default function ChatDetailPage() {
   const [chatData, setChatData] = useState<ChatData | null>(null);
   const [messages, setMessages] = useState<ChatData['messages']>([]);
   const [newMessage, setNewMessage] = useState("");
+  const { toast } = useToast();
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -42,21 +44,57 @@ export default function ChatDetailPage() {
   }, [messages]);
 
   const handleSendMessage = () => {
-    if (newMessage.trim() === "") return;
+    if (newMessage.trim() === "" || !chatData) return;
+
+    const currentUser = users.find((u) => u.id === "user1");
 
     const msg: ChatData['messages'][0] = {
       id: `msg${Date.now()}`,
       chatId,
       senderId: "user1",
-      sender: { id: "user1", name: "You", avatar: "", status: "" },
+      sender: currentUser!,
       content: newMessage,
       timestamp: new Date().toISOString(),
       read: false,
       reactions: {},
     };
 
-    setMessages([...messages, msg]);
+    setMessages((prevMessages) => [...prevMessages, msg]);
     setNewMessage("");
+
+    // Simulate receiving a message and show notification
+    setTimeout(() => {
+      const otherParticipant = chatData.participants.find(
+        (p) => p.id !== "user1"
+      );
+      if (otherParticipant) {
+        const replyMessage: ChatData["messages"][0] = {
+          id: `msg${Date.now() + 1}`,
+          chatId: chatData.id,
+          senderId: otherParticipant.id,
+          sender: otherParticipant,
+          content:
+            "This is an automated reply to demonstrate notifications!",
+          timestamp: new Date().toISOString(),
+          read: false,
+          reactions: {},
+        };
+
+        setMessages((prev) => [...prev, replyMessage]);
+
+        toast({
+          title: `New message from ${otherParticipant.name}`,
+          description: replyMessage.content,
+          action: (
+            <Link href={`/chat/${chatData.id}`} passHref>
+              <Button variant="outline" size="sm">
+                View
+              </Button>
+            </Link>
+          ),
+        });
+      }
+    }, 2000);
   };
 
   if (!chatData) {
