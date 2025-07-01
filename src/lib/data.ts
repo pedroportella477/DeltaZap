@@ -56,6 +56,15 @@ export type Note = {
   timestamp: string;
 };
 
+export type SharedLink = {
+  id: string;
+  url: string;
+  messageContent: string;
+  sender: User;
+  chat: { id: string; name: string; avatar?: string };
+  timestamp: string;
+};
+
 export const users: User[] = [
   { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
   { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
@@ -76,6 +85,7 @@ export let chats: Chat[] = [
       { id: "msg2", chatId: "chat1", senderId: "user1", content: "Tudo bem, apenas trabalhando em um novo projeto. E você?", timestamp: new Date(now.getTime() - 9 * 60000).toISOString(), read: true, reactions: {}, type: 'text', replyTo: { messageId: "msg1", content: "Olá! Como vai?", senderName: "Larissa Mendes"} },
       { id: "msg3", chatId: "chat1", senderId: "user2", content: "Legal! Estou planejando uma viagem para o próximo mês.", timestamp: new Date(now.getTime() - 8 * 60000).toISOString(), read: true, reactions: { '❤️': 2 }, type: 'text' },
       { id: "msg4", chatId: "chat1", senderId: "user2", content: "Alguma sugestão?", timestamp: new Date(now.getTime() - 7 * 60000).toISOString(), read: false, reactions: {}, type: 'text' },
+      { id: "msg_link_1", chatId: "chat1", senderId: "user1", content: "Falando em projeto, encontrei uma biblioteca de UI incrível: https://ui.shadcn.com/", timestamp: new Date(now.getTime() - 6 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
     ],
   },
   {
@@ -92,7 +102,7 @@ export let chats: Chat[] = [
       { id: "msg5", chatId: "chat2", senderId: "user3", content: "Olá equipe, qual é o status da nova funcionalidade?", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
       { id: "msg6", chatId: "chat2", senderId: "user4", content: "Enviei as últimas atualizações para a branch de desenvolvimento.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString(), read: true, reactions: { '🚀': 1 }, type: 'text' },
       { id: "msg7", chatId: "chat2", senderId: "user1", content: "Ótimo, vou revisar hoje à tarde.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 10 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
-      { id: "msg8", chatId: "chat2", senderId: "user3", content: "Perfeito. Me avise se houver algum problema.", timestamp: new Date(now.getTime() - 5 * 60000).toISOString(), read: false, reactions: {}, type: 'text' },
+      { id: "msg_link_2", chatId: "chat2", senderId: "user3", content: "Perfeito. Quem precisar de acesso ao Figma, o link é este: https://www.figma.com/files", timestamp: new Date(now.getTime() - 5 * 60000).toISOString(), read: false, reactions: {}, type: 'text' },
     ],
   },
   {
@@ -251,6 +261,52 @@ export function updateUserPresence(userId: string, presence: UserPresence) {
     if (userIndex > -1) {
         users[userIndex].presence = presence;
     }
+}
+
+export function getSharedLinks(): SharedLink[] {
+  const allLinks: SharedLink[] = [];
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+  chats.forEach(chat => {
+    let chatDetails;
+    if (chat.type === 'group') {
+        chatDetails = {
+            id: chat.id,
+            name: chat.name!,
+            avatar: chat.avatar!,
+        };
+    } else {
+        const otherUser = users.find(u => u.id === chat.participants.find(p => p.userId !== 'user1')?.userId);
+        chatDetails = {
+            id: chat.id,
+            name: otherUser?.name || "Unknown Chat",
+            avatar: otherUser?.avatar
+        };
+    }
+
+    chat.messages.forEach(message => {
+      if (message.type === 'text') {
+        const foundUrls = message.content.match(urlRegex);
+        if (foundUrls) {
+          const sender = users.find(u => u.id === message.senderId);
+          if (sender) {
+            foundUrls.forEach(url => {
+              allLinks.push({
+                id: `${message.id}-${url}`,
+                url: url,
+                messageContent: message.content,
+                sender: sender,
+                chat: chatDetails,
+                timestamp: message.timestamp,
+              });
+            });
+          }
+        }
+      }
+    });
+  });
+
+  return allLinks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
 export function forwardMessage(message: Message, targetChatIds: string[]) {
