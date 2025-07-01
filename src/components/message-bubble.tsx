@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { Message as MessageType } from "@/lib/data";
 import { format } from "date-fns";
@@ -21,7 +21,12 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message, chatType }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
+  const [isMounted, setIsMounted] = useState(false);
   const isYou = message.senderId === "user1";
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const handleReaction = (emoji: string) => {
     setReactions(prev => ({
@@ -100,7 +105,7 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
               {message.type === 'text' && (
                 <div className="flex items-center justify-end gap-2 mt-1">
                   <p className="text-xs opacity-70">
-                    {format(new Date(message.timestamp), "HH:mm")}
+                    {isMounted ? format(new Date(message.timestamp), "HH:mm") : ''}
                   </p>
                   {isYou &&
                     (message.read ? (

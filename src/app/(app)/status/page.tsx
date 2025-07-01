@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { users, statuses as initialStatuses, User, Status } from "@/lib/data";
@@ -25,6 +25,11 @@ import { useToast } from '@/hooks/use-toast';
 export default function StatusPage() {
   const [statuses, setStatuses] = useState(initialStatuses);
   const { toast } = useToast();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const currentUser = users.find(u => u.id === 'user1')!;
   const myLastStatus = statuses
@@ -95,7 +100,12 @@ export default function StatusPage() {
                 </div>
                 <div>
                   <p className="font-semibold">Meu status</p>
-                  <p className="text-sm text-muted-foreground">{myLastStatus ? formatDistanceToNow(new Date(myLastStatus.timestamp), { locale: ptBR, addSuffix: true }) : "Toque para ver seu status"}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {myLastStatus
+                      ? (isMounted ? formatDistanceToNow(new Date(myLastStatus.timestamp), { locale: ptBR, addSuffix: true }) : '...')
+                      : "Toque para ver seu status"
+                    }
+                  </p>
                 </div>
               </div>
             </DialogTrigger>
@@ -179,7 +189,9 @@ export default function StatusPage() {
                     </Avatar>
                     <div>
                       <p className="font-semibold">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(status.timestamp), { locale: ptBR, addSuffix: true })}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {isMounted ? formatDistanceToNow(new Date(status.timestamp), { locale: ptBR, addSuffix: true }) : '...'}
+                      </p>
                     </div>
                   </div>
                 </DialogTrigger>
