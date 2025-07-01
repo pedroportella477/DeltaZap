@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { chats as initialChats, users } from "@/lib/data";
+import { chats as initialChats, users, UserPresence } from "@/lib/data";
 import { format, isToday, isYesterday } from "date-fns";
 import { Check, CheckCheck, PlusCircle, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Dialog, DialogTrigger } from "./ui/dialog";
 import { CreateGroupDialog } from "./create-group-dialog";
 import { Input } from "./ui/input";
+import { cn } from "@/lib/utils";
 
 const formatTimestamp = (timestamp: string) => {
   if (!timestamp) return "";
@@ -22,6 +23,14 @@ const formatTimestamp = (timestamp: string) => {
       return 'Ontem';
   }
   return format(date, 'dd/MM/yyyy');
+};
+
+const presenceIndicatorColors: Record<UserPresence, string> = {
+  online: "bg-green-500",
+  ocupado: "bg-red-500",
+  cafe: "bg-amber-500",
+  almoco: "bg-orange-500",
+  offline: "bg-gray-400",
 };
 
 export function ChatList() {
@@ -56,6 +65,7 @@ export function ChatList() {
       id: chat.id,
       name: chat.name || otherUser?.name || "Unknown",
       avatar: chat.avatar || otherUser?.avatar || "",
+      presence: chat.type === 'individual' ? otherUser?.presence : undefined,
       lastMessage: lastMessage?.content || "Nenhuma mensagem ainda",
       timestamp: lastMessage ? lastMessage.timestamp : "",
       isRead: lastMessage?.senderId === 'user1' ? lastMessage.read : true,
@@ -99,10 +109,18 @@ export function ChatList() {
           {filteredChatListItems.map((item) => (
             <Link href={`/chat/${item!.id}`} key={item!.id}>
               <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer border-b">
-                <Avatar className="h-12 w-12 mr-4">
-                  <AvatarImage src={item!.avatar} alt={item!.name} />
-                  <AvatarFallback>{item!.name.charAt(0)}</AvatarFallback>
-                </Avatar>
+                <div className="relative mr-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={item!.avatar} alt={item!.name} />
+                    <AvatarFallback>{item!.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  {item?.presence && item.presence !== 'offline' && (
+                    <div className={cn(
+                      "absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-card",
+                      presenceIndicatorColors[item.presence]
+                    )} />
+                  )}
+                </div>
                 <div className="flex-grow">
                   <h3 className="font-semibold">{item!.name}</h3>
                   <p className="text-sm text-muted-foreground truncate flex items-center">

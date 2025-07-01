@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getChatData, Message as MessageType, users } from "@/lib/data";
-import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Users } from "lucide-react";
+import { getChatData, Message as MessageType, users, UserPresence } from "@/lib/data";
+import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Users, Circle, MinusCircle, Coffee, Utensils } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,14 @@ const stickers = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7abBUNCB4lT6dAhO/giphy.gif",
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/l41lI4bYmcsbOK6ha/giphy.gif",
 ];
+
+const presenceStatus: Record<UserPresence, { icon: React.ReactNode; label: string }> = {
+  online: { icon: <Circle className="h-2.5 w-2.5 text-green-500 fill-current" />, label: 'Online' },
+  ocupado: { icon: <MinusCircle className="h-2.5 w-2.5 text-red-500" />, label: 'Ocupado' },
+  cafe: { icon: <Coffee className="h-2.5 w-2.5 text-amber-500" />, label: 'Café' },
+  almoco: { icon: <Utensils className="h-2.5 w-2.5 text-orange-500" />, label: 'Almoço' },
+  offline: { icon: <Circle className="h-2.5 w-2.5 text-gray-400" />, label: 'Offline' },
+};
 
 export function ChatDetail({ chatId }: { chatId: string }) {
   const [chatData, setChatData] = useState<ChatData | null>(null);
@@ -173,6 +181,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   }
   
   const lastMessageFromOther = messages.slice().reverse().find(m => m.senderId !== 'user1');
+  const otherParticipant = chatData.type === 'individual' ? chatData.participants.find(p => p.id !== 'user1') : null;
 
   const HeaderContent = () => (
     <div className="flex items-center">
@@ -182,10 +191,16 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       </Avatar>
       <div className="ml-3">
         <h2 className="font-semibold font-headline">{chatData.name}</h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           {chatData.type === 'group' 
             ? `${chatData.participants.length} membros` 
-            : 'online'}
+            : otherParticipant?.presence ? (
+              <>
+                {presenceStatus[otherParticipant.presence].icon}
+                {presenceStatus[otherParticipant.presence].label}
+              </>
+            ) : 'Offline'
+          }
         </p>
       </div>
     </div>

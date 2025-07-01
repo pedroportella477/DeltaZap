@@ -1,8 +1,11 @@
+export type UserPresence = 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
+
 export type User = {
   id: string;
   name: string;
   avatar: string;
   status: string;
+  presence: UserPresence;
 };
 
 export type Participant = {
@@ -40,11 +43,11 @@ export type Status = {
 };
 
 export const users: User[] = [
-  { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨" },
-  { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!" },
-  { id: "user3", name: "Pedro Portella", avatar: "https://placehold.co/100x100.png", status: "Ocupado com o trabalho." },
-  { id: "user4", name: "Tamiris Mendes", avatar: "https://placehold.co/100x100.png", status: "Na academia." },
-  { id: "user5", name: "Equipe de Design", avatar: "https://placehold.co/100x100.png", status: "" },
+  { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
+  { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
+  { id: "user3", name: "Pedro Portella", avatar: "https://placehold.co/100x100.png", status: "Ocupado com o trabalho.", presence: "ocupado" },
+  { id: "user4", name: "Tamiris Mendes", avatar: "https://placehold.co/100x100.png", status: "Na academia.", presence: "online" },
+  { id: "user5", name: "Equipe de Design", avatar: "https://placehold.co/100x100.png", status: "", presence: "cafe" },
 ];
 
 const now = new Date();
@@ -161,4 +164,11 @@ export function removeParticipant(chatId: string, userId: string) {
     if (chatIndex === -1) return;
 
     chats[chatIndex].participants = chats[chatIndex].participants.filter(p => p.userId !== userId);
+}
+
+export function updateUserPresence(userId: string, presence: UserPresence) {
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex > -1) {
+        users[userIndex].presence = presence;
+    }
 }
