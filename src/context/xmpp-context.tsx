@@ -48,6 +48,20 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [roster, setRoster] = useState<RosterItem[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [isWindowFocused, setIsWindowFocused] = useState(true);
+
+  useEffect(() => {
+    const handleFocus = () => setIsWindowFocused(true);
+    const handleBlur = () => setIsWindowFocused(false);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   const handleStanza = useCallback((stanza: Stanza) => {
     // Handle Presence
@@ -81,6 +95,23 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const body = stanza.getChildText('body');
       const type = (stanza.getChildText('type') as Message['type']) || 'text';
       const fileName = stanza.getChildText('fileName');
+      
+      const isChatActive = bareFromJid === activeChatId && isWindowFocused;
+
+      // Browser Notification Logic
+      if (!isChatActive && Notification.permission === 'granted') {
+          const contact = roster.find(r => r.jid === bareFromJid);
+          const title = contact?.name || bareFromJid;
+          const notification = new Notification(title, {
+              body: type === 'text' ? body : 'Enviou uma mídia...',
+              icon: '/icon.png', // A placeholder icon
+              tag: bareFromJid, // Groups notifications by chat
+          });
+          notification.onclick = () => {
+              window.focus();
+          };
+      }
+
 
       if (stanza.getAttr('type') === 'chat' && userId) {
         const newMessage: Omit<Message, 'id'> = {
@@ -88,7 +119,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           senderId: bareFromJid,
           content: body,
           timestamp: serverTimestamp(),
-          read: bareFromJid === activeChatId,
+          read: isChatActive,
           reactions: {},
           type,
           fileName,
@@ -105,7 +136,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (chatIndex > -1) {
             const updatedChat = { ...newChats[chatIndex] };
             updatedChat.messages = [...updatedChat.messages, fullMessage];
-            if (bareFromJid !== activeChatId) {
+            if (!isChatActive) {
                 updatedChat.unreadCount = (updatedChat.unreadCount || 0) + 1;
             }
             newChats[chatIndex] = updatedChat;
@@ -126,7 +157,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         });
       }
     }
-  }, [activeChatId, roster, userId]);
+  }, [activeChatId, isWindowFocused, roster, userId]);
 
 
   const connect = useCallback(async (jidStr: string, passwordStr: string) => {
@@ -189,6 +220,13 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       newClient.on('online', async (address) => {
         console.log('Online as', address.toString());
         await newClient.send(xml('presence'));
+        
+        // Request notification permission
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'default') {
+            await Notification.requestPermission();
+          }
+        }
         
         const rosterStanza = await newClient.iqCaller.request(
           xml('iq', { type: 'get' }, xml('query', { xmlns: 'jabber:iq:roster' }))
