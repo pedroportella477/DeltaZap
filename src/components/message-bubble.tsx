@@ -12,10 +12,15 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
+import Image from 'next/image';
 
 interface MessageBubbleProps {
   message: MessageType & { sender: ReturnType<typeof users.find> };
 }
+
+const isImageURL = (url: string) => {
+    return url.startsWith('https://placehold.co');
+};
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
@@ -33,6 +38,8 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     "👍": <ThumbsUp className="h-4 w-4 text-blue-500 fill-current" />,
     "😄": <Smile className="h-4 w-4 text-yellow-500 fill-current" />,
   }
+
+  const isMedia = isImageURL(message.content);
 
   return (
     <div
@@ -57,10 +64,22 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 "bg-card": !isYou,
               })}
             >
-              {!isYou && message.sender && (
+              {!isYou && message.sender && !isMedia && (
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
-              <p className="text-sm break-words">{message.content}</p>
+              
+              {isMedia ? (
+                <Image 
+                  src={message.content}
+                  alt="sent media"
+                  width={200}
+                  height={200}
+                  className="rounded-md"
+                />
+              ) : (
+                <p className="text-sm break-words">{message.content}</p>
+              )}
+
               <div className="flex items-center justify-end gap-2 mt-1">
                 <p className="text-xs opacity-70">
                   {format(new Date(message.timestamp), "HH:mm")}
