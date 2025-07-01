@@ -15,11 +15,12 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarInset,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
-import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut } from "lucide-react";
-import { users } from "@/lib/data";
+import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle } from "lucide-react";
+import { users, UserPresence } from "@/lib/data";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +28,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "./ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { useXmpp } from "@/context/xmpp-context";
 
 const Logo = () => (
     <div className="flex items-center gap-2" data-ai-hint="logo">
@@ -39,17 +43,35 @@ const Logo = () => (
     </div>
 )
 
+const presenceOptions: { value: UserPresence, label: string, icon: React.ReactNode }[] = [
+    { value: 'online', label: 'Online', icon: <Circle className="h-2.5 w-2.5 text-green-500 fill-current" /> },
+    { value: 'ocupado', label: 'Ocupado', icon: <MinusCircle className="h-2.5 w-2.5 text-red-500" /> },
+    { value: 'cafe', label: 'Pausa para o café', icon: <Coffee className="h-2.5 w-2.5 text-amber-500" /> },
+    { value: 'almoco', label: 'Em almoço', icon: <Utensils className="h-2.5 w-2.5 text-orange-500" /> },
+    { value: 'offline', label: 'Invisível', icon: <Circle className="h-2.5 w-2.5 text-gray-400" /> },
+];
+
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const [currentUser] = useState(users.find((u) => u.id === "user1")!);
+  const { disconnect, jid } = useXmpp();
+  const [presence, setPresence] = useState<UserPresence>('online');
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await disconnect();
     Cookies.remove('auth-jid');
     toast({ title: "Você saiu!", description: "Até a próxima!" });
     router.push('/login');
   };
+  
+  const handlePresenceChange = (value: string) => {
+    const newPresence = value as UserPresence;
+    setPresence(newPresence);
+    // TODO: Send presence update via XMPP
+    toast({ title: "Status alterado!", description: `Você agora está ${presenceOptions.find(p => p.value === newPresence)?.label}.`});
+  }
 
   return (
     <SidebarProvider>
@@ -81,7 +103,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
-              <SidebarMenuItem>
+               <SidebarMenuItem>
                 <Link href="/notes">
                   <SidebarMenuButton isActive={pathname.startsWith('/notes')} tooltip="Minhas Anotações">
                     <StickyNote />
@@ -117,12 +139,22 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     </Avatar>
                     <div className="group-data-[collapsible=icon]:hidden text-left">
                         <p className="font-semibold text-sm">{currentUser?.name}</p>
-                        <p className="text-xs text-muted-foreground">{currentUser?.status.length > 20 ? `${currentUser?.status.slice(0, 20)}...` : currentUser?.status}</p>
+                        <p className="text-xs text-muted-foreground">{jid?.split('@')[0]}</p>
                     </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-64 mb-2" side="top" align="start">
                 <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">Definir status</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={presence} onValueChange={handlePresenceChange}>
+                  {presenceOptions.map(option => (
+                     <DropdownMenuRadioItem key={option.value} value={option.value} className="flex items-center gap-2 cursor-pointer">
+                        {option.icon}
+                        <span>{option.label}</span>
+                     </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 <Link href="/profile">
                   <DropdownMenuItem>
@@ -138,8 +170,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        <SidebarInset className="max-h-screen overflow-hidden p-0 m-0 rounded-none shadow-none">
-            {children}
+        <SidebarInset className="flex flex-col max-h-screen overflow-hidden p-0 m-0 rounded-none shadow-none">
+            <div className="flex-grow overflow-auto">
+              {children}
+            </div>
+            <footer className="text-center py-2 px-4 text-xs text-muted-foreground border-t bg-background">
+                © {new Date().getFullYear()} - Desenvolvido por Pedro Portella
+            </footer>
         </SidebarInset>
       </div>
     </SidebarProvider>

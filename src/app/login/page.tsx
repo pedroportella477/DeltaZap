@@ -1,12 +1,11 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { client } from '@xmpp/client';
 import Cookies from 'js-cookie';
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
+import { useXmpp } from '@/context/xmpp-context';
 
 const loginSchema = z.object({
   jid: z.string().email("Por favor, insira um JID válido (ex: usuario@servidor.com)"),
@@ -35,61 +35,26 @@ const Logo = () => (
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { connect, status, error } = useXmpp();
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
 
-  const authenticate = async (jid: string, password: string) => {
-    return new Promise((resolve, reject) => {
-      const [username, domain] = jid.split('@');
-      
-      const xmpp = client({
-        service: `ws://localhost:7070/ws-xmpp`, 
-        domain: domain,
-        resource: 'webapp',
-        username: username,
-        password: password,
-      });
-
-      xmpp.on('error', (err) => {
-        console.error('XMPP Error:', err);
-        reject(new Error('Falha na autenticação. Verifique suas credenciais e a conexão com o servidor.'));
-        xmpp.stop().catch(console.error);
-      });
-
-      xmpp.on('offline', () => {
-        reject(new Error('Desconectado do servidor XMPP.'));
-      });
-
-      xmpp.on('online', async (address) => {
-        console.log('Online as', address.toString());
-        // In a real app, you'd manage the xmpp instance here (e.g., in a context)
-        // For now, we'll just confirm connection and proceed.
-        await xmpp.stop();
-        resolve(true);
-      });
-
-      xmpp.start().catch(reject);
-    });
-  };
+  useEffect(() => {
+    if (status === 'online') {
+      toast({ title: "Login bem-sucedido!", description: "Bem-vindo(a) de volta!" });
+      router.push('/chat');
+    }
+    if (status === 'error' && error) {
+      toast({ variant: 'destructive', title: 'Erro de Login', description: error });
+      setIsLoading(false);
+    }
+  }, [status, error, router, toast]);
 
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
-    try {
-      // For this example, we're assuming the server is on localhost.
-      // In a real application, you'd get this from configuration.
-      await authenticate(data.jid, data.password);
-
-      Cookies.set('auth-jid', data.jid, { expires: 1 }); // Expires in 1 day
-      toast({ title: "Login bem-sucedido!", description: "Bem-vindo(a) de volta!" });
-      router.push('/chat');
-
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Erro de Login', description: error.message });
-    } finally {
-      setIsLoading(false);
-    }
+    await connect(data.jid, data.password);
   };
 
   return (
