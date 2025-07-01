@@ -70,6 +70,9 @@ export type SupportMaterial = {
   id: string;
   title: string;
   content: string;
+  imageUrl?: string;
+  documentUrl?: string;
+  documentName?: string;
   timestamp: string;
 };
 
@@ -369,11 +372,10 @@ export function getSupportMaterials() {
   return supportMaterials.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
-export function addSupportMaterial(title: string, content: string) {
+export function addSupportMaterial(data: Omit<SupportMaterial, 'id' | 'timestamp'>) {
   const newMaterial: SupportMaterial = {
     id: `support${Date.now()}`,
-    title,
-    content,
+    ...data,
     timestamp: new Date().toISOString(),
   };
   supportMaterials.unshift(newMaterial);

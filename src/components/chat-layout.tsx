@@ -175,7 +175,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               {children}
             </div>
             <footer className="text-center py-2 px-4 text-xs text-muted-foreground border-t bg-background">
-                © {new Date().getFullYear()} - Desenvolvido por Pedro Portella
+                © {new Date().getFullYear()} - Desenvolvido por Pedro Portella Dev
             </footer>
         </SidebarInset>
       </div>
