@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { users } from "@/lib/data";
-import { Camera, Edit2 } from "lucide-react";
+import { Camera, Edit2, Sparkles, Wand2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { generateImage } from "@/ai/flows/generate-image-flow";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const sampleAvatars = [
     'https://placehold.co/128x128.png',
@@ -26,6 +29,12 @@ export default function ProfilePage() {
   const [name, setName] = useState(user.name);
   const [status, setStatus] = useState(user.status);
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
+  
+  // State for AI image generation
+  const [generationPrompt, setGenerationPrompt] = useState("");
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const { toast } = useToast();
 
   const handleSave = () => {
@@ -39,11 +48,31 @@ export default function ProfilePage() {
   const handleAvatarChange = (newAvatarUrl: string) => {
     setUser(prev => ({ ...prev, avatar: newAvatarUrl }));
     setIsAvatarDialogOpen(false);
+    setGeneratedImage(null);
+    setGenerationPrompt("");
     toast({
       title: "Avatar Atualizado!",
       description: "Sua foto de perfil foi alterada.",
     });
   };
+
+  const handleGenerateImage = async () => {
+    if (!generationPrompt) {
+        toast({ variant: 'destructive', title: 'Prompt vazio', description: 'Por favor, descreva a imagem que você quer gerar.' });
+        return;
+    }
+    setIsGenerating(true);
+    setGeneratedImage(null);
+    try {
+        const imageUrl = await generateImage(generationPrompt);
+        setGeneratedImage(imageUrl);
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Erro na Geração', description: 'Não foi possível gerar a imagem. Tente novamente.' });
+    } finally {
+        setIsGenerating(false);
+    }
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -69,17 +98,56 @@ export default function ProfilePage() {
             <DialogHeader>
               <DialogTitle>Escolha um novo avatar</DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-3 gap-4 py-4">
-              {sampleAvatars.map((avatarUrl, index) => (
-                <button 
-                  key={index} 
-                  className="rounded-full overflow-hidden aspect-square relative group focus:ring-2 focus:ring-ring" 
-                  onClick={() => handleAvatarChange(avatarUrl)}
-                >
-                  <Image src={avatarUrl} alt={`Avatar ${index + 1}`} width={100} height={100} className="w-full h-full object-cover" data-ai-hint="person portrait" />
-                </button>
-              ))}
-            </div>
+            <Tabs defaultValue="gallery" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="gallery">Galeria</TabsTrigger>
+                    <TabsTrigger value="ai"><Sparkles className="mr-2 h-4 w-4"/>Gerar com IA</TabsTrigger>
+                </TabsList>
+                <TabsContent value="gallery">
+                    <div className="grid grid-cols-3 gap-4 py-4">
+                        {sampleAvatars.map((avatarUrl, index) => (
+                            <button 
+                            key={index} 
+                            className="rounded-full overflow-hidden aspect-square relative group focus:ring-2 focus:ring-ring" 
+                            onClick={() => handleAvatarChange(avatarUrl)}
+                            >
+                            <Image src={avatarUrl} alt={`Avatar ${index + 1}`} width={100} height={100} className="w-full h-full object-cover" data-ai-hint="person portrait" />
+                            </button>
+                        ))}
+                    </div>
+                </TabsContent>
+                <TabsContent value="ai">
+                    <div className="py-4 space-y-4">
+                        <p className="text-sm text-muted-foreground">Descreva a imagem que você quer criar. Seja criativo!</p>
+                        <div className="flex gap-2">
+                           <Input 
+                                placeholder="Ex: um gato com chapéu de mago" 
+                                value={generationPrompt} 
+                                onChange={(e) => setGenerationPrompt(e.target.value)}
+                                disabled={isGenerating}
+                           />
+                           <Button onClick={handleGenerateImage} disabled={isGenerating}>
+                               <Wand2 className="mr-2 h-4 w-4" />
+                               Gerar
+                           </Button>
+                        </div>
+                        <div className="aspect-square w-full flex items-center justify-center rounded-md border border-dashed">
+                           {isGenerating && <Skeleton className="w-full h-full" />}
+                           {!isGenerating && generatedImage && (
+                                <button onClick={() => handleAvatarChange(generatedImage)} className="w-full h-full relative group">
+                                    <Image src={generatedImage} alt="Imagem gerada por IA" fill className="object-cover rounded-md" />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                                        <p className="text-white font-semibold">Usar esta imagem</p>
+                                    </div>
+                                </button>
+                           )}
+                           {!isGenerating && !generatedImage && (
+                               <p className="text-sm text-muted-foreground">Sua imagem aparecerá aqui.</p>
+                           )}
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
         

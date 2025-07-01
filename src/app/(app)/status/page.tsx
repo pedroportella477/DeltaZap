@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { users, statuses as initialStatuses, User, Status } from "@/lib/data";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Camera, Pencil, Image as ImageIcon } from "lucide-react";
+import { Camera, Pencil, Wand2, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,19 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { generateImage } from '@/ai/flows/generate-image-flow';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function StatusPage() {
   const [statuses, setStatuses] = useState(initialStatuses);
   const { toast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
+  const [isAiImageDialogOpen, setIsAiImageDialogOpen] = useState(false);
+  const [generationPrompt, setGenerationPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isTextStatusDialogOpen, setIsTextStatusDialogOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -66,21 +73,41 @@ export default function StatusPage() {
       };
       setStatuses(prev => [newStatus, ...prev]);
       toast({ title: "Status publicado!" });
-      // This will be inside a DialogClose, so it will close automatically
+      setIsTextStatusDialogOpen(false);
     }
   };
 
-  const handleAddImageStatus = () => {
+  const handleAddImageStatus = (imageUrl: string) => {
     const newStatus: Status = {
       id: `status${Date.now()}`,
       userId: 'user1',
-      content: 'https://placehold.co/300x500.png',
+      content: imageUrl,
       timestamp: new Date().toISOString(),
       type: 'image'
     };
     setStatuses(prev => [newStatus, ...prev]);
     toast({ title: "Status publicado!" });
+    setIsAiImageDialogOpen(false);
+    setGenerationPrompt("");
   };
+  
+  const handleGenerateImage = async () => {
+    if (!generationPrompt) {
+        toast({ variant: 'destructive', title: 'Prompt vazio', description: 'Por favor, descreva a imagem que você quer gerar.' });
+        return;
+    }
+    setIsGenerating(true);
+    try {
+        const imageUrl = await generateImage(generationPrompt);
+        handleAddImageStatus(imageUrl);
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Erro na Geração', description: 'Não foi possível gerar a imagem. Tente novamente.' });
+    } finally {
+        setIsGenerating(false);
+    }
+  }
+
 
   return (
     <div className="h-full flex flex-col">
@@ -138,7 +165,7 @@ export default function StatusPage() {
           </Dialog>
           
           <div className="flex justify-end mt-[-56px] gap-3">
-              <Dialog>
+              <Dialog open={isTextStatusDialogOpen} onOpenChange={setIsTextStatusDialogOpen}>
                   <DialogTrigger asChild>
                        <Button size="icon" variant="secondary" className="rounded-full shadow-lg h-12 w-12"><Pencil className="h-5 w-5"/></Button>
                   </DialogTrigger>
@@ -147,24 +174,31 @@ export default function StatusPage() {
                        <form onSubmit={handleAddTextStatus}>
                           <Textarea name="status-text" placeholder="O que você está pensando?" className="min-h-[200px] text-lg focus-visible:ring-transparent border-0 bg-secondary" />
                           <DialogFooter className="mt-4">
-                             <DialogClose asChild>
-                              <Button type="submit">Publicar</Button>
-                             </DialogClose>
+                            <Button type="submit">Publicar</Button>
                           </DialogFooter>
                        </form>
                   </DialogContent>
               </Dialog>
-              <Dialog>
+              <Dialog open={isAiImageDialogOpen} onOpenChange={setIsAiImageDialogOpen}>
                   <DialogTrigger asChild>
                       <Button size="icon" className="rounded-full shadow-lg h-14 w-14"><Camera className="h-6 w-6"/></Button>
                   </DialogTrigger>
                   <DialogContent>
-                      <DialogHeader><DialogTitle>Criar status de imagem</DialogTitle></DialogHeader>
-                      <div className="flex flex-col items-center justify-center gap-4 py-10">
-                          <p className="text-muted-foreground">Isso adicionará uma imagem de exemplo ao seu status.</p>
-                          <DialogClose asChild>
-                              <Button onClick={handleAddImageStatus}>Adicionar Imagem</Button>
-                          </DialogClose>
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2"><Sparkles /> Criar status com IA</DialogTitle>
+                      </DialogHeader>
+                      <div className="flex flex-col items-center justify-center gap-4 py-4">
+                        <p className="text-muted-foreground text-center text-sm">Descreva a imagem que você quer postar no seu status.</p>
+                          <Input 
+                            placeholder="Ex: um dia chuvoso visto da janela" 
+                            value={generationPrompt} 
+                            onChange={(e) => setGenerationPrompt(e.target.value)}
+                            disabled={isGenerating}
+                          />
+                          <Button onClick={handleGenerateImage} disabled={isGenerating} className="w-full">
+                            {isGenerating ? 'Gerando...' : 'Gerar e Publicar'}
+                          </Button>
+                          {isGenerating && <Skeleton className="h-20 w-full rounded-md" />}
                       </div>
                   </DialogContent>
               </Dialog>
