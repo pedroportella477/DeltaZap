@@ -10,10 +10,10 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const GenerateImageInputSchema = z.string().describe('A text prompt describing the image to generate.');
+const GenerateImageInputSchema = z.string().describe('A text prompt describing the image to generate.');
 export type GenerateImageInput = z.infer<typeof GenerateImageInputSchema>;
 
-export const GenerateImageOutputSchema = z.string().describe("The generated image as a data URI in 'data:image/png;base64,...' format.");
+const GenerateImageOutputSchema = z.string().describe("The generated image as a data URI in 'data:image/png;base64,...' format.");
 export type GenerateImageOutput = z.infer<typeof GenerateImageOutputSchema>;
 
 export async function generateImage(prompt: GenerateImageInput): Promise<GenerateImageOutput> {
