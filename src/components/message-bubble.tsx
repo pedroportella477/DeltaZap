@@ -63,7 +63,7 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
           <PopoverTrigger asChild>
             <div
               className={cn("max-w-xs md:max-w-md lg:max-w-lg rounded-lg shadow-md", {
-                "bg-primary text-primary-foreground": isYou && !isMedia,
+                "bg-secondary text-secondary-foreground": isYou && !isMedia,
                 "bg-card": !isYou && !isMedia,
                 "p-0 bg-transparent": isMedia,
                 "px-3 py-2": !isMedia,

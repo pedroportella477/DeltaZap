@@ -159,7 +159,7 @@ export default function ChatDetailPage() {
   const lastMessageFromOther = messages.slice().reverse().find(m => m.senderId !== 'user1');
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full bg-background">
       <header className="flex items-center p-3 border-b bg-card">
         <Link href="/chat" className="md:hidden mr-2">
            <Button variant="ghost" size="icon">
@@ -191,7 +191,7 @@ export default function ChatDetailPage() {
         </div>
       </ScrollArea>
       
-      <footer className="p-4 border-t bg-background/80 backdrop-blur-sm">
+      <footer className="p-4 border-t bg-card">
         <SmartReplySuggestions 
           chatHistory={messages.map(m => `${m.sender.name}: ${m.content}`).join('\n')}
           currentMessage={lastMessageFromOther?.content || ''}
