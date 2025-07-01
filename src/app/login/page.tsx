@@ -62,7 +62,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background bg-whatsapp-doodles p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background bg-whatsapp-doodles p-4">
       <Card className="w-full max-w-sm shadow-2xl bg-card/90 dark:bg-card/70 backdrop-blur-lg border border-primary/10">
         <CardHeader className="items-center text-center">
             <Logo />
@@ -100,6 +100,9 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+       <footer className="absolute bottom-4 text-center text-xs text-muted-foreground">
+         © {new Date().getFullYear()} - Desenvolvido por Pedro Portella Dev
+      </footer>
     </div>
   );
 }
