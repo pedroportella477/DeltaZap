@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getChatData, Message as MessageType, users, UserPresence } from "@/lib/data";
-import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Users, Circle, MinusCircle, Coffee, Utensils } from "lucide-react";
+import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Users, Circle, MinusCircle, Coffee, Utensils, Search, Reply, X } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { GroupInfoSheet } from "./group-info-sheet";
+import { cn } from "@/lib/utils";
 
 type ChatData = NonNullable<ReturnType<typeof getChatData>>;
 
@@ -48,10 +49,14 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [attachmentPopoverOpen, setAttachmentPopoverOpen] = useState(false);
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   const refreshChatData = useCallback(() => {
     const data = getChatData(chatId);
@@ -63,7 +68,15 @@ export function ChatDetail({ chatId }: { chatId: string }) {
 
   useEffect(() => {
     refreshChatData();
+    setIsSearching(false);
+    setSearchQuery("");
   }, [chatId, refreshChatData]);
+
+  useEffect(() => {
+    if (isSearching && searchInputRef.current) {
+        searchInputRef.current.focus();
+    }
+  }, [isSearching]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -89,6 +102,11 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       reactions: {},
       type,
       fileName,
+      replyTo: replyingTo ? {
+        messageId: replyingTo.id,
+        content: replyingTo.type === 'text' ? replyingTo.content : (replyingTo.fileName || 'Mídia'),
+        senderName: replyingTo.sender.name,
+      } : undefined,
     };
     
     // This is a simulation, in a real app this would be sent to a server
@@ -98,6 +116,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     }
 
     refreshChatData();
+    setReplyingTo(null);
 
     setTimeout(() => {
       const otherParticipant = chatData.participants.find(
@@ -170,7 +189,14 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   const onEmojiClick = (emojiData: EmojiClickData) => {
     setNewMessage((prev) => prev + emojiData.emoji);
   };
-
+  
+  const handleReply = (message: MessageType) => {
+    setReplyingTo(message);
+  };
+  
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
 
   if (!chatData) {
     return (
@@ -182,6 +208,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   
   const lastMessageFromOther = messages.slice().reverse().find(m => m.senderId !== 'user1');
   const otherParticipant = chatData.type === 'individual' ? chatData.participants.find(p => p.id !== 'user1') : null;
+  const displayedMessages = searchQuery ? messages.filter(m => m.type === 'text' && m.content.toLowerCase().includes(searchQuery.toLowerCase())) : messages;
 
   const HeaderContent = () => (
     <div className="flex items-center">
@@ -205,6 +232,21 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       </div>
     </div>
   );
+  
+  const SearchBar = () => (
+    <div className="flex items-center w-full gap-2">
+      <Input 
+        ref={searchInputRef}
+        placeholder="Pesquisar nesta conversa..."
+        className="h-9"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+      <Button variant="ghost" size="icon" onClick={() => { setIsSearching(false); setSearchQuery(""); }}>
+        <X />
+      </Button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -216,19 +258,26 @@ export function ChatDetail({ chatId }: { chatId: string }) {
             </Button>
           </Link>
           
-          {chatData.type === 'group' ? (
-            <SheetTrigger asChild className="cursor-pointer flex-grow">
-              <HeaderContent />
-            </SheetTrigger>
-          ) : (
-            <HeaderContent />
-          )}
+          {isSearching ? <SearchBar /> : (
+            <>
+              {chatData.type === 'group' ? (
+                <SheetTrigger asChild className="cursor-pointer flex-grow">
+                  <HeaderContent />
+                </SheetTrigger>
+              ) : (
+                <HeaderContent />
+              )}
 
-          <div className="ml-auto">
-            <Button variant="ghost" size="icon">
-              <MoreVertical />
-            </Button>
-          </div>
+              <div className="ml-auto flex items-center">
+                <Button variant="ghost" size="icon" onClick={() => setIsSearching(true)}>
+                  <Search />
+                </Button>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical />
+                </Button>
+              </div>
+            </>
+          )}
         </header>
 
         {chatData.type === 'group' && (
@@ -247,13 +296,33 @@ export function ChatDetail({ chatId }: { chatId: string }) {
 
       <ScrollArea className="flex-grow" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {messages.map((message) => (
-            <MessageBubble key={message.id} message={{...message, sender: users.find(u => u.id === message.senderId)!}} chatType={chatData.type} />
+          {displayedMessages.map((message) => (
+            <MessageBubble 
+              key={message.id} 
+              message={{...message, sender: users.find(u => u.id === message.senderId)!}} 
+              chatType={chatData.type}
+              onReply={handleReply}
+              searchQuery={searchQuery}
+            />
           ))}
+          {isSearching && displayedMessages.length === 0 && (
+             <div className="text-center text-muted-foreground p-8">
+                <p>Nenhuma mensagem encontrada para "{searchQuery}"</p>
+             </div>
+          )}
         </div>
       </ScrollArea>
       
       <footer className="p-4 border-t bg-card">
+        {replyingTo && (
+           <div className="p-2 mb-2 bg-muted rounded-md relative">
+              <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={cancelReply}>
+                  <X className="h-4 w-4" />
+              </Button>
+              <p className="text-sm font-semibold text-primary">Respondendo a {replyingTo.sender.name}</p>
+              <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
+           </div>
+        )}
         <SmartReplySuggestions 
           chatHistory={messages.map(m => `${m.sender.name}: ${m.content}`).join('\n')}
           currentMessage={lastMessageFromOther?.content || ''}

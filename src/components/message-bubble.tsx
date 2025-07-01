@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { Message as MessageType } from "@/lib/data";
 import { format } from "date-fns";
-import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download } from "lucide-react";
+import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download, Reply } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -17,9 +18,32 @@ import Image from 'next/image';
 interface MessageBubbleProps {
   message: MessageType & { sender: { id: string, name: string, avatar: string } };
   chatType: 'group' | 'individual';
+  onReply: (message: MessageType) => void;
+  searchQuery?: string;
 }
 
-export default function MessageBubble({ message, chatType }: MessageBubbleProps) {
+const highlightText = (text: string, highlight: string) => {
+    if (!highlight?.trim()) {
+        return <>{text}</>;
+    }
+    const regex = new RegExp(`(${highlight})`, 'gi');
+    const parts = text.split(regex);
+    return (
+        <>
+            {parts.map((part, i) =>
+                regex.test(part) ? (
+                    <mark key={i} className="bg-primary/30 rounded">
+                        {part}
+                    </mark>
+                ) : (
+                    part
+                )
+            )}
+        </>
+    );
+};
+
+export default function MessageBubble({ message, chatType, onReply, searchQuery }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
   const [isMounted, setIsMounted] = useState(false);
   const isYou = message.senderId === "user1";
@@ -43,6 +67,16 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
 
   const isMedia = message.type === 'image';
   const isDocument = message.type === 'document';
+  
+  const RepliedMessage = () => {
+      if (!message.replyTo) return null;
+      return (
+          <div className="p-2 text-sm rounded-md bg-black/5 dark:bg-white/5 mb-2 border-l-2 border-primary">
+              <p className="font-semibold text-primary text-xs">{message.replyTo.senderName}</p>
+              <p className="text-muted-foreground truncate">{message.replyTo.content}</p>
+          </div>
+      )
+  }
 
   return (
     <div
@@ -76,6 +110,8 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               
+              <RepliedMessage />
+
               {isMedia ? (
                 <Image 
                   src={message.content}
@@ -99,7 +135,9 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
                     </Button>
                 </div>
               ) : (
-                <p className="text-sm break-words">{message.content}</p>
+                <p className="text-sm break-words">
+                  {highlightText(message.content, searchQuery || "")}
+                </p>
               )}
 
               {message.type === 'text' && (
@@ -117,7 +155,8 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
               )}
             </div>
           </PopoverTrigger>
-          {message.type === 'text' && (<PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
+          {message.type === 'text' && (
+          <PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
             <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleReaction('❤️')}>
                    <Heart className="h-5 w-5 text-muted-foreground hover:text-red-500 hover:fill-current" />
@@ -127,6 +166,9 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
                 </Button>
                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleReaction('😄')}>
                    <Smile className="h-5 w-5 text-muted-foreground hover:text-yellow-500 hover:fill-current" />
+                </Button>
+                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => onReply(message)}>
+                   <Reply className="h-5 w-5 text-muted-foreground hover:text-primary" />
                 </Button>
             </div>
           </PopoverContent>)}

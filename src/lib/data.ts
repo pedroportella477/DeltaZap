@@ -23,6 +23,11 @@ export type Message = {
   reactions: { [emoji: string]: number };
   type: 'text' | 'image' | 'document';
   fileName?: string;
+  replyTo?: {
+    messageId: string;
+    content: string;
+    senderName: string;
+  };
 };
 
 export type Chat = {
@@ -43,7 +48,7 @@ export type Status = {
 };
 
 export type Note = {
-  id: string;
+  id:string;
   title: string;
   content: string;
   color: string;
@@ -67,7 +72,7 @@ export let chats: Chat[] = [
     participants: [{ userId: "user1", role: 'member' }, { userId: "user2", role: 'member' }],
     messages: [
       { id: "msg1", chatId: "chat1", senderId: "user2", content: "Olá! Como vai?", timestamp: new Date(now.getTime() - 10 * 60000).toISOString(), read: true, reactions: { '👍': 1 }, type: 'text' },
-      { id: "msg2", chatId: "chat1", senderId: "user1", content: "Tudo bem, apenas trabalhando em um novo projeto. E você?", timestamp: new Date(now.getTime() - 9 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
+      { id: "msg2", chatId: "chat1", senderId: "user1", content: "Tudo bem, apenas trabalhando em um novo projeto. E você?", timestamp: new Date(now.getTime() - 9 * 60000).toISOString(), read: true, reactions: {}, type: 'text', replyTo: { messageId: "msg1", content: "Olá! Como vai?", senderName: "Larissa Mendes"} },
       { id: "msg3", chatId: "chat1", senderId: "user2", content: "Legal! Estou planejando uma viagem para o próximo mês.", timestamp: new Date(now.getTime() - 8 * 60000).toISOString(), read: true, reactions: { '❤️': 2 }, type: 'text' },
       { id: "msg4", chatId: "chat1", senderId: "user2", content: "Alguma sugestão?", timestamp: new Date(now.getTime() - 7 * 60000).toISOString(), read: false, reactions: {}, type: 'text' },
     ],
