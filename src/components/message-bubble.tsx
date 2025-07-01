@@ -126,14 +126,27 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
               <RepliedMessage />
 
               {isMedia ? (
-                <Image 
-                  src={message.content}
-                  alt="sent media"
-                  width={200}
-                  height={200}
-                  className="rounded-md object-cover"
-                  unoptimized
-                />
+                <div className="relative">
+                  <Image 
+                    src={message.content}
+                    alt="sent media"
+                    width={200}
+                    height={200}
+                    className="rounded-md object-cover"
+                    unoptimized
+                  />
+                  <div className="absolute bottom-1 right-1 flex items-center justify-end gap-2">
+                    <p className="text-xs text-white drop-shadow-md bg-black/20 px-1.5 py-0.5 rounded-full">
+                      {isMounted ? format(new Date(message.timestamp), "HH:mm") : ''}
+                    </p>
+                    {isYou &&
+                      (message.read ? (
+                        <CheckCheck className="h-4 w-4 text-white drop-shadow-md" />
+                      ) : (
+                        <Check className="h-4 w-4 text-white drop-shadow-md" />
+                      ))}
+                  </div>
+                </div>
               ) : isDocument ? (
                 <div className="flex items-center gap-3">
                     <FileText className="h-8 w-8 text-primary shrink-0" />
@@ -168,7 +181,6 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
               )}
             </div>
           </PopoverTrigger>
-          {message.type === 'text' && (
           <PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
             <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleReaction('❤️')}>
@@ -187,10 +199,10 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
                    <Forward className="h-5 w-5 text-muted-foreground hover:text-primary" />
                 </Button>
             </div>
-          </PopoverContent>)}
+          </PopoverContent>
         </Popover>
 
-        {Object.keys(reactions).length > 0 && message.type === 'text' && (
+        {Object.keys(reactions).length > 0 && (
              <div className="absolute -bottom-3 right-1 flex items-center gap-1 rounded-full bg-background border px-1.5 py-0.5 shadow-sm text-xs">
                  {Object.entries(reactions).map(([emoji, count]) => (
                     <span key={emoji} className="flex items-center gap-0.5">
