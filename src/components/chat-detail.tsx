@@ -239,7 +239,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
                         <Smile />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full sm:w-96 p-0 border-none">
+                <PopoverContent side="top" align="start" sideOffset={8} className="w-full sm:w-96 p-0 border-none">
                     <Tabs defaultValue="emoji" className="w-full">
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="emoji">Emoji</TabsTrigger>
@@ -296,7 +296,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
                         <Paperclip />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-1 mb-2">
+                <PopoverContent side="top" sideOffset={8} className="w-auto p-1">
                     <div className="flex flex-col gap-1">
                         <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => handleSendFile('image')}>
                             <ImageIcon /> Imagem/Vídeo
