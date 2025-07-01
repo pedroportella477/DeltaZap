@@ -67,8 +67,8 @@ export default function LoginPage() {
         <CardHeader className="items-center text-center">
             <Logo />
             <div className='pt-4'>
-                <CardTitle>Bem-vindo(a) de volta!</CardTitle>
-                <CardDescription>Faça login na mais eficiente plataforma de comunicação corporativa</CardDescription>
+                <CardTitle>Bem-vindo(a)!</CardTitle>
+                <CardDescription>A mais eficiente plataforma de comunicação corporativa</CardDescription>
             </div>
         </CardHeader>
         <CardContent>
