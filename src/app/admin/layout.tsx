@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Inter, Space_Grotesk } from "next/font/google";
 import '../globals.css';
@@ -12,8 +13,8 @@ const spaceGrotesk = Space_Grotesk({
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${spaceGrotesk.variable}`}>
-      <body className='font-body antialiased'>
+    <html lang="pt-BR">
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-body antialiased`}>
         <AdminShell>
             {children}
         </AdminShell>
