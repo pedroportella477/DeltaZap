@@ -58,8 +58,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-background bg-whatsapp-doodles p-4">
+      <Card className="w-full max-w-sm shadow-2xl bg-card/80 dark:bg-card/60 backdrop-blur-lg">
         <CardHeader className="text-center">
           <div className='flex justify-center mb-4'>
             <Logo />
