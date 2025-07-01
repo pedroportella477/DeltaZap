@@ -68,7 +68,7 @@ export default function LoginPage() {
             <Logo />
             <div className='pt-4'>
                 <CardTitle>Bem-vindo(a) de volta!</CardTitle>
-                <CardDescription>Faça login na sua conta Openfire para continuar.</CardDescription>
+                <CardDescription>Faça login na mais eficiente plataforma de comunicação corporativa</CardDescription>
             </div>
         </CardHeader>
         <CardContent>
