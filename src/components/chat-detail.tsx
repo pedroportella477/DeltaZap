@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getChatData, Message as MessageType, users, UserPresence } from "@/lib/data";
-import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Users, Circle, MinusCircle, Coffee, Utensils, Search, Reply, X } from "lucide-react";
+import { Message as MessageType, users, UserPresence } from "@/lib/data";
+import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Circle, MinusCircle, Coffee, Utensils, Search, Reply, X } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
 import { useToast } from "@/hooks/use-toast";
@@ -18,10 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { GroupInfoSheet } from "./group-info-sheet";
-import { cn } from "@/lib/utils";
 import { ForwardMessageDialog } from "./forward-message-dialog";
-
-type ChatData = NonNullable<ReturnType<typeof getChatData>>;
+import { useXmpp } from "@/context/xmpp-context";
 
 const gifs = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExaDB6eWRlZnRrczZ5dmp0cGJvY2l6a3NqZWpnanF3dWY2NmVqYnhlZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7btNa0RUYa5E7iiQ/giphy.gif",
@@ -43,10 +41,8 @@ const presenceStatus: Record<UserPresence, { icon: React.ReactNode; label: strin
 };
 
 export function ChatDetail({ chatId }: { chatId: string }) {
-  const [chatData, setChatData] = useState<ChatData | null>(null);
-  const [messages, setMessages] = useState<ChatData['messages']>([]);
+  const { roster, getChatById, sendMessage, markChatAsRead } = useXmpp();
   const [newMessage, setNewMessage] = useState("");
-  const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [attachmentPopoverOpen, setAttachmentPopoverOpen] = useState(false);
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
@@ -60,19 +56,16 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   const documentInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  const refreshChatData = useCallback(() => {
-    const data = getChatData(chatId);
-    setChatData(data);
-    if (data) {
-      setMessages(data.messages);
-    }
-  }, [chatId]);
+  const chatData = getChatById(chatId);
+  const contactInfo = roster.find(r => r.jid === chatId);
+  
+  const messages = chatData?.messages || [];
 
   useEffect(() => {
-    refreshChatData();
+    markChatAsRead(chatId);
     setIsSearching(false);
     setSearchQuery("");
-  }, [chatId, refreshChatData]);
+  }, [chatId, markChatAsRead]);
 
   useEffect(() => {
     if (isSearching && searchInputRef.current) {
@@ -89,81 +82,16 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     }
   }, [messages]);
 
-  const addMessage = (content: string, type: MessageType['type'], fileName?: string) => {
-    if (content.trim() === "" || !chatData) return;
-
-    const currentUser = users.find((u) => u.id === "user1");
-
-    const msg: MessageType = {
-      id: `msg${Date.now()}`,
-      chatId,
-      senderId: "user1",
-      content,
-      timestamp: new Date().toISOString(),
-      read: false,
-      reactions: {},
-      type,
-      fileName,
-      replyTo: replyingTo ? {
-        messageId: replyingTo.id,
-        content: replyingTo.type === 'text' ? replyingTo.content : (replyingTo.fileName || 'Mídia'),
-        senderName: replyingTo.sender.name,
-      } : undefined,
-    };
-    
-    // This is a simulation, in a real app this would be sent to a server
-    const targetChat = require('@/lib/data').chats.find((c: any) => c.id === chatId);
-    if(targetChat) {
-      targetChat.messages.push({ ...msg, sender: currentUser!});
-    }
-
-    refreshChatData();
-    setReplyingTo(null);
-
-    setTimeout(() => {
-      const otherParticipant = chatData.participants.find(
-        (p) => p.id !== "user1"
-      );
-      if (otherParticipant && chatData.type === 'individual') {
-        const replyMessage: MessageType = {
-          id: `msg${Date.now() + 1}`,
-          chatId: chatData.id,
-          senderId: otherParticipant.id,
-          content:
-            "Esta é uma resposta automática para demonstrar as notificações!",
-          timestamp: new Date().toISOString(),
-          read: false,
-          reactions: {},
-          type: 'text',
-        };
-
-        targetChat.messages.push({ ...replyMessage, sender: otherParticipant});
-        refreshChatData();
-
-        toast({
-          title: `Nova mensagem de ${otherParticipant.name}`,
-          description: replyMessage.content,
-          action: (
-            <Link href={`/chat/${chatData.id}`} passHref>
-              <Button variant="outline" size="sm">
-                Ver
-              </Button>
-            </Link>
-          ),
-        });
-      }
-    }, 2000);
-  };
 
   const handleSendTextMessage = () => {
     if (newMessage.trim()) {
-      addMessage(newMessage, 'text');
+      sendMessage(chatId, newMessage, 'text');
       setNewMessage("");
     }
   };
   
   const handleSendMediaMessage = (url: string) => {
-    addMessage(url, 'image');
+    sendMessage(chatId, url, 'image');
     setPopoverOpen(false);
   };
   
@@ -171,16 +99,12 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (type === 'image' && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
-        addMessage(dataUrl, 'image', file.name);
-      };
-      reader.readAsDataURL(file);
-    } else if (type === 'document') {
-      addMessage('document_placeholder', 'document', file.name);
-    }
+        sendMessage(chatId, dataUrl, type, file.name);
+    };
+    reader.readAsDataURL(file);
 
     setAttachmentPopoverOpen(false);
     if (event.target) {
@@ -204,35 +128,32 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     setForwardingMessage(message);
   };
 
-  if (!chatData) {
+  if (!contactInfo && !chatData) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p>Carregando conversa...</p>
+        <p>Contato não encontrado.</p>
       </div>
     );
   }
-  
+
   const lastMessageFromOther = messages.slice().reverse().find(m => m.senderId !== 'user1');
-  const otherParticipant = chatData.type === 'individual' ? chatData.participants.find(p => p.id !== 'user1') : null;
+  const chatName = chatData?.name || contactInfo?.name || chatId;
+  const chatAvatar = chatData?.avatar || 'https://placehold.co/100x100.png';
+  
   const displayedMessages = searchQuery ? messages.filter(m => m.type === 'text' && m.content.toLowerCase().includes(searchQuery.toLowerCase())) : messages;
 
   const HeaderContent = () => (
     <div className="flex items-center">
       <Avatar className="h-10 w-10">
-        <AvatarImage src={chatData.avatar} alt={chatData.name} />
-        <AvatarFallback>{chatData.name?.charAt(0)}</AvatarFallback>
+        <AvatarImage src={chatAvatar} alt={chatName} />
+        <AvatarFallback>{chatName?.charAt(0)}</AvatarFallback>
       </Avatar>
       <div className="ml-3">
-        <h2 className="font-semibold font-headline">{chatData.name}</h2>
+        <h2 className="font-semibold font-headline">{chatName}</h2>
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          {chatData.type === 'group' 
+          {chatData?.type === 'group' 
             ? `${chatData.participants.length} membros` 
-            : otherParticipant?.presence ? (
-              <>
-                {presenceStatus[otherParticipant.presence].icon}
-                {presenceStatus[otherParticipant.presence].label}
-              </>
-            ) : 'Offline'
+            : 'Online' // Placeholder for real presence
           }
         </p>
       </div>
@@ -266,7 +187,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
           
           {isSearching ? <SearchBar /> : (
             <>
-              {chatData.type === 'group' ? (
+              {chatData?.type === 'group' ? (
                 <SheetTrigger asChild className="cursor-pointer flex-grow">
                   <HeaderContent />
                 </SheetTrigger>
@@ -286,13 +207,12 @@ export function ChatDetail({ chatId }: { chatId: string }) {
           )}
         </header>
 
-        {chatData.type === 'group' && (
+        {chatData?.type === 'group' && (
           <SheetContent className="w-full sm:w-[420px] p-0 flex flex-col">
               <GroupInfoSheet 
                 chatId={chatData.id}
                 onGroupUpdate={() => {
-                  refreshChatData();
-                  // A small delay to allow data to propagate before closing
+                  // This is now handled by context, no need for manual refresh
                   setTimeout(() => setIsGroupInfoOpen(false), 300);
                 }} 
               />
@@ -305,8 +225,8 @@ export function ChatDetail({ chatId }: { chatId: string }) {
           {displayedMessages.map((message) => (
             <MessageBubble 
               key={message.id} 
-              message={{...message, sender: users.find(u => u.id === message.senderId)!}} 
-              chatType={chatData.type}
+              message={{...message, sender: users.find(u => u.id === message.senderId) || {id: message.senderId, name: message.senderId, avatar: ''} }} 
+              chatType={chatData?.type || 'individual'}
               onReply={handleReply}
               onForward={handleForward}
               searchQuery={searchQuery}
@@ -331,7 +251,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
            </div>
         )}
         <SmartReplySuggestions 
-          chatHistory={messages.map(m => `${m.sender.name}: ${m.content}`).join('\n')}
+          chatHistory={messages.map(m => `${m.senderId}: ${m.content}`).join('\n')}
           currentMessage={lastMessageFromOther?.content || ''}
           onSuggestionClick={(suggestion) => setNewMessage(suggestion)}
         />
@@ -442,8 +362,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
             message={forwardingMessage}
             onClose={() => setForwardingMessage(null)}
             onForward={() => {
-                refreshChatData();
-                // We might want to also refresh the main chat list
+                // This is now handled by context
             }}
         />
       )}

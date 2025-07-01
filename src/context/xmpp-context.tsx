@@ -3,8 +3,9 @@
 
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { client, xml } from '@xmpp/client';
-import type { XmppClient } from '@xmpp/client';
+import type { XmppClient, Stanza } from '@xmpp/client';
 import Cookies from 'js-cookie';
+import { Chat, Message, User, users } from '@/lib/data';
 
 type XmppStatus = 'disconnected' | 'connecting' | 'online' | 'error' | 'restoring';
 
@@ -22,8 +23,12 @@ interface XmppContextType {
   userId: string | null;
   error: string | null;
   roster: RosterItem[];
+  chats: Chat[];
   connect: (jid: string, password: string) => Promise<void>;
   disconnect: () => Promise<void>;
+  sendMessage: (to: string, body: string, type?: 'text' | 'image' | 'document', fileName?: string) => void;
+  markChatAsRead: (chatId: string) => void;
+  getChatById: (chatId: string) => Chat | undefined;
 }
 
 const XmppContext = createContext<XmppContextType | undefined>(undefined);
@@ -35,9 +40,62 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [roster, setRoster] = useState<RosterItem[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+
+  const handleIncomingMessage = useCallback((stanza: Stanza) => {
+    if (stanza.is('message') && stanza.getChild('body')) {
+      const fromJid = stanza.getAttr('from');
+      const bareFromJid = fromJid.split('/')[0];
+      const body = stanza.getChildText('body');
+      const type = (stanza.getChildText('type') as Message['type']) || 'text';
+      const fileName = stanza.getChildText('fileName');
+
+      if (stanza.getAttr('type') === 'chat') {
+        const newMessage: Message = {
+          id: stanza.getAttr('id') || `msg${Date.now()}`,
+          chatId: bareFromJid,
+          senderId: bareFromJid,
+          content: body,
+          timestamp: new Date().toISOString(),
+          read: bareFromJid === activeChatId,
+          reactions: {},
+          type,
+          fileName,
+        };
+
+        setChats(prevChats => {
+          const chatIndex = prevChats.findIndex(c => c.id === bareFromJid);
+          let newChats = [...prevChats];
+
+          if (chatIndex > -1) {
+            const updatedChat = { ...newChats[chatIndex] };
+            updatedChat.messages = [...updatedChat.messages, newMessage];
+            if (bareFromJid !== activeChatId) {
+                updatedChat.unreadCount = (updatedChat.unreadCount || 0) + 1;
+            }
+            newChats[chatIndex] = updatedChat;
+          } else {
+            const contact = roster.find(r => r.jid === bareFromJid);
+            const newChat: Chat = {
+              id: bareFromJid,
+              type: 'individual',
+              name: contact?.name || bareFromJid,
+              avatar: `https://placehold.co/100x100.png`,
+              participants: [{ userId: bareFromJid, role: 'member' }],
+              messages: [newMessage],
+              unreadCount: 1,
+            };
+            newChats.push(newChat);
+          }
+          return newChats.sort((a,b) => new Date(b.messages[b.messages.length - 1]?.timestamp).getTime() - new Date(a.messages[a.messages.length - 1]?.timestamp).getTime());
+        });
+      }
+    }
+  }, [activeChatId, roster]);
+
 
   const connect = useCallback(async (jidStr: string, passwordStr: string) => {
-    // If a client instance exists, stop it before creating a new one.
     if (xmppClient) {
       await xmppClient.stop().catch(console.error);
     }
@@ -45,6 +103,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setStatus('connecting');
     setError(null);
     setRoster([]);
+    setChats([]);
 
     try {
       const serverIp = typeof window !== 'undefined' ? localStorage.getItem('xmpp_server_ip') : 'localhost';
@@ -63,8 +122,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         username,
         password: passwordStr,
       });
-
-      // Centralized cleanup logic
+      
       const cleanup = () => {
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('xmpp_jid');
@@ -75,6 +133,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setJid(null);
         setUserId(null);
         setRoster([]);
+        setChats([]);
         setXmppClient(null);
       }
 
@@ -91,11 +150,12 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         cleanup();
       });
 
+      newClient.on('stanza', handleIncomingMessage);
+
       newClient.on('online', async (address) => {
         console.log('Online as', address.toString());
         await newClient.send(xml('presence'));
         
-        // Fetch the roster
         const rosterStanza = await newClient.iqCaller.request(
           xml('iq', { type: 'get' }, xml('query', { xmlns: 'jabber:iq:roster' }))
         );
@@ -127,20 +187,84 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setStatus('error');
       setError(e.message || 'Ocorreu um erro inesperado durante a conexão.');
     }
-  }, [xmppClient]);
+  }, [xmppClient, handleIncomingMessage]);
 
   const disconnect = useCallback(async () => {
     if (xmppClient) {
       try {
+        await xmppClient.send(xml('presence', { type: 'unavailable' }));
         await xmppClient.stop();
       } catch (e) {
         console.error('Error during disconnect:', e);
       }
     }
-    // The 'offline' handler will perform the cleanup
   }, [xmppClient]);
+
+  const sendMessage = useCallback((to: string, body: string, type: Message['type'] = 'text', fileName?: string) => {
+    if (!xmppClient || !userId) return;
+
+    const messageStanza = xml('message', { to, type: 'chat' }, 
+        xml('body', {}, body),
+    );
+    if(type !== 'text') {
+        messageStanza.getChild('body')?.append(xml('type', {}, type));
+        if (fileName) {
+            messageStanza.getChild('body')?.append(xml('fileName', {}, fileName));
+        }
+    }
+
+    xmppClient.send(messageStanza);
+
+    const sentMessage: Message = {
+      id: `msg${Date.now()}`,
+      chatId: to,
+      senderId: userId,
+      content: body,
+      timestamp: new Date().toISOString(),
+      read: true,
+      reactions: {},
+      type,
+      fileName,
+    };
+
+    setChats(prevChats => {
+      const chatIndex = prevChats.findIndex(c => c.id === to);
+      let newChats = [...prevChats];
+
+      if (chatIndex > -1) {
+        const updatedChat = { ...newChats[chatIndex] };
+        updatedChat.messages = [...updatedChat.messages, sentMessage];
+        newChats[chatIndex] = updatedChat;
+      } else {
+        const contact = roster.find(r => r.jid === to);
+        const newChat: Chat = {
+          id: to,
+          type: 'individual',
+          name: contact?.name || to,
+          avatar: `https://placehold.co/100x100.png`,
+          participants: [{ userId: to, role: 'member' }],
+          messages: [sentMessage],
+          unreadCount: 0,
+        };
+        newChats.push(newChat);
+      }
+      return newChats.sort((a,b) => new Date(b.messages[b.messages.length - 1]?.timestamp).getTime() - new Date(a.messages[a.messages.length - 1]?.timestamp).getTime());
+    });
+  }, [xmppClient, userId, roster]);
+
+  const markChatAsRead = useCallback((chatId: string) => {
+    setActiveChatId(chatId);
+    setChats(prevChats =>
+      prevChats.map(chat =>
+        chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
+      )
+    );
+  }, []);
+
+  const getChatById = useCallback((chatId: string) => {
+    return chats.find(c => c.id === chatId);
+  }, [chats]);
   
-  // Effect to restore session on initial load
   useEffect(() => {
     const savedJid = sessionStorage.getItem('xmpp_jid');
     const savedPassword = sessionStorage.getItem('xmpp_password');
@@ -150,11 +274,10 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else {
       setStatus('disconnected');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, []); 
 
   return (
-    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect, roster }}>
+    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect, roster, chats, sendMessage, markChatAsRead, getChatById }}>
       {status === 'restoring' ? (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
           <p>Restaurando sessão...</p>

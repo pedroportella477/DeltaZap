@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { chats, forwardMessage, Message as MessageType, users } from '@/lib/data';
+import { Message as MessageType } from '@/lib/data';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from './ui/scroll-area';
@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { useXmpp } from '@/context/xmpp-context';
 
 interface ForwardMessageDialogProps {
     message: MessageType | null;
@@ -21,6 +21,7 @@ interface ForwardMessageDialogProps {
 export function ForwardMessageDialog({ message, onClose, onForward }: ForwardMessageDialogProps) {
     const [selectedChats, setSelectedChats] = useState<string[]>([]);
     const { toast } = useToast();
+    const { chats, sendMessage } = useXmpp();
 
     if (!message) {
         return null;
@@ -36,7 +37,10 @@ export function ForwardMessageDialog({ message, onClose, onForward }: ForwardMes
             return;
         }
 
-        forwardMessage(message, selectedChats);
+        selectedChats.forEach(chatId => {
+            sendMessage(chatId, message.content, message.type, message.fileName);
+        })
+
         toast({
             title: 'Mensagem encaminhada!',
             description: `Sua mensagem foi encaminhada para ${selectedChats.length} conversa(s).`,
@@ -44,15 +48,6 @@ export function ForwardMessageDialog({ message, onClose, onForward }: ForwardMes
         onForward();
         onClose();
     };
-
-    const getChatDetails = (chat: typeof chats[0]) => {
-        if (chat.type === 'group') {
-            return { name: chat.name, avatar: chat.avatar };
-        }
-        const otherParticipantId = chat.participants.find(p => p.userId !== 'user1')?.userId;
-        const otherUser = users.find(u => u.id === otherParticipantId);
-        return { name: otherUser?.name, avatar: otherUser?.avatar };
-    }
 
     return (
         <Dialog open={!!message} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -64,7 +59,6 @@ export function ForwardMessageDialog({ message, onClose, onForward }: ForwardMes
                 <ScrollArea className="h-64 my-4">
                     <div className="space-y-1">
                         {chats.map(chat => {
-                            const details = getChatDetails(chat);
                             return (
                                 <Label 
                                     key={chat.id}
@@ -83,11 +77,11 @@ export function ForwardMessageDialog({ message, onClose, onForward }: ForwardMes
                                         }}
                                     />
                                     <Avatar className="h-8 w-8">
-                                        <AvatarImage src={details?.avatar || ''} alt={details?.name || 'Chat avatar'} />
-                                        <AvatarFallback>{details?.name?.charAt(0) || ''}</AvatarFallback>
+                                        <AvatarImage src={chat.avatar || ''} alt={chat.name || 'Chat avatar'} />
+                                        <AvatarFallback>{chat.name?.charAt(0) || ''}</AvatarFallback>
                                     </Avatar>
                                     <span className="font-normal flex-1">
-                                        {details?.name}
+                                        {chat.name}
                                     </span>
                                 </Label>
                             );
