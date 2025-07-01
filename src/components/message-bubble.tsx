@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { Message as MessageType } from "@/lib/data";
 import { format } from "date-fns";
-import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download, Reply } from "lucide-react";
+import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download, Reply, Forward } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -19,6 +19,7 @@ interface MessageBubbleProps {
   message: MessageType & { sender: { id: string, name: string, avatar: string } };
   chatType: 'group' | 'individual';
   onReply: (message: MessageType) => void;
+  onForward: (message: MessageType) => void;
   searchQuery?: string;
 }
 
@@ -43,7 +44,7 @@ const highlightText = (text: string, highlight: string) => {
     );
 };
 
-export default function MessageBubble({ message, chatType, onReply, searchQuery }: MessageBubbleProps) {
+export default function MessageBubble({ message, chatType, onReply, onForward, searchQuery }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
   const [isMounted, setIsMounted] = useState(false);
   const isYou = message.senderId === "user1";
@@ -77,6 +78,16 @@ export default function MessageBubble({ message, chatType, onReply, searchQuery 
           </div>
       )
   }
+  
+  const ForwardedIndicator = () => {
+    if (!message.forwarded) return null;
+    return (
+      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+        <Forward className="h-3 w-3" />
+        <span>Mensagem encaminhada</span>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -110,6 +121,7 @@ export default function MessageBubble({ message, chatType, onReply, searchQuery 
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               
+              <ForwardedIndicator />
               <RepliedMessage />
 
               {isMedia ? (
@@ -169,6 +181,9 @@ export default function MessageBubble({ message, chatType, onReply, searchQuery 
                 </Button>
                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => onReply(message)}>
                    <Reply className="h-5 w-5 text-muted-foreground hover:text-primary" />
+                </Button>
+                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => onForward(message)}>
+                   <Forward className="h-5 w-5 text-muted-foreground hover:text-primary" />
                 </Button>
             </div>
           </PopoverContent>)}

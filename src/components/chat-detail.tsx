@@ -19,6 +19,7 @@ import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { GroupInfoSheet } from "./group-info-sheet";
 import { cn } from "@/lib/utils";
+import { ForwardMessageDialog } from "./forward-message-dialog";
 
 type ChatData = NonNullable<ReturnType<typeof getChatData>>;
 
@@ -52,6 +53,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<MessageType | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +200,10 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     setReplyingTo(null);
   };
 
+  const handleForward = (message: MessageType) => {
+    setForwardingMessage(message);
+  };
+
   if (!chatData) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -302,6 +308,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
               message={{...message, sender: users.find(u => u.id === message.senderId)!}} 
               chatType={chatData.type}
               onReply={handleReply}
+              onForward={handleForward}
               searchQuery={searchQuery}
             />
           ))}
@@ -430,6 +437,16 @@ export function ChatDetail({ chatId }: { chatId: string }) {
           </Button>
         </div>
       </footer>
+      {forwardingMessage && (
+        <ForwardMessageDialog 
+            message={forwardingMessage}
+            onClose={() => setForwardingMessage(null)}
+            onForward={() => {
+                refreshChatData();
+                // We might want to also refresh the main chat list
+            }}
+        />
+      )}
     </div>
   );
 }

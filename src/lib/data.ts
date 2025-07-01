@@ -28,6 +28,7 @@ export type Message = {
     content: string;
     senderName: string;
   };
+  forwarded?: boolean;
 };
 
 export type Chat = {
@@ -250,4 +251,24 @@ export function updateUserPresence(userId: string, presence: UserPresence) {
     if (userIndex > -1) {
         users[userIndex].presence = presence;
     }
+}
+
+export function forwardMessage(message: Message, targetChatIds: string[]) {
+  targetChatIds.forEach(chatId => {
+    const chat = chats.find(c => c.id === chatId);
+    if (chat) {
+      const newMessage: Message = {
+        ...message,
+        id: `msg${Date.now()}-${chatId}-${Math.random()}`,
+        chatId: chatId,
+        senderId: 'user1',
+        timestamp: new Date().toISOString(),
+        read: false,
+        reactions: {},
+        replyTo: undefined,
+        forwarded: true,
+      };
+      chat.messages.push(newMessage);
+    }
+  });
 }
