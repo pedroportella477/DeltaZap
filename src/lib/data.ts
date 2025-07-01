@@ -5,6 +5,11 @@ export type User = {
   status: string;
 };
 
+export type Participant = {
+  userId: string;
+  role: 'admin' | 'member';
+};
+
 export type Message = {
   id: string;
   chatId: string;
@@ -22,7 +27,7 @@ export type Chat = {
   type: "individual" | "group";
   name?: string;
   avatar?: string;
-  participants: string[];
+  participants: Participant[];
   messages: Message[];
 };
 
@@ -44,11 +49,11 @@ export const users: User[] = [
 
 const now = new Date();
 
-export const chats: Chat[] = [
+export let chats: Chat[] = [
   {
     id: "chat1",
     type: "individual",
-    participants: ["user1", "user2"],
+    participants: [{ userId: "user1", role: 'member' }, { userId: "user2", role: 'member' }],
     messages: [
       { id: "msg1", chatId: "chat1", senderId: "user2", content: "Olá! Como vai?", timestamp: new Date(now.getTime() - 10 * 60000).toISOString(), read: true, reactions: { '👍': 1 }, type: 'text' },
       { id: "msg2", chatId: "chat1", senderId: "user1", content: "Tudo bem, apenas trabalhando em um novo projeto. E você?", timestamp: new Date(now.getTime() - 9 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
@@ -61,7 +66,11 @@ export const chats: Chat[] = [
     type: "group",
     name: "Projeto Delta",
     avatar: "https://placehold.co/100x100.png",
-    participants: ["user1", "user3", "user4"],
+    participants: [
+      { userId: "user1", role: 'admin' }, 
+      { userId: "user3", role: 'member' },
+      { userId: "user4", role: 'member' }
+    ],
     messages: [
       { id: "msg5", chatId: "chat2", senderId: "user3", content: "Olá equipe, qual é o status da nova funcionalidade?", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
       { id: "msg6", chatId: "chat2", senderId: "user4", content: "Enviei as últimas atualizações para a branch de desenvolvimento.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString(), read: true, reactions: { '🚀': 1 }, type: 'text' },
@@ -72,7 +81,7 @@ export const chats: Chat[] = [
   {
     id: "chat3",
     type: "individual",
-    participants: ["user1", "user4"],
+    participants: [{ userId: "user1", role: 'member' }, { userId: "user4", role: 'member' }],
     messages: [
       { id: "msg9", chatId: "chat3", senderId: "user4", content: "A sessão de academia hoje foi intensa!", timestamp: new Date(now.getTime() - 3 * 60 * 60000).toISOString(), read: true, reactions: {}, type: 'text' },
       { id: "msg10", chatId: "chat3", senderId: "user1", content: "Haha, imagino! Estou planejando ir amanhã.", timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), read: false, reactions: {}, type: 'text' },
@@ -90,19 +99,66 @@ export function getChatData(chatId: string) {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return null;
 
-    const participants = users.filter(u => chat.participants.includes(u.id));
+    const participantsWithDetails = chat.participants.map(p => {
+        const user = users.find(u => u.id === p.userId)!;
+        return { ...user, role: p.role };
+    });
+
     const messagesWithSender = chat.messages.map(m => ({
         ...m,
         sender: users.find(u => u.id === m.senderId)!
     }));
-
-    const otherParticipant = chat.type === 'individual' ? participants.find(p => p.id !== 'user1') : null;
+    
+    const otherParticipant = chat.type === 'individual' ? participantsWithDetails.find(p => p.id !== 'user1') : null;
     
     return {
         ...chat,
         name: chat.name || otherParticipant?.name,
         avatar: chat.avatar || otherParticipant?.avatar,
-        participants,
+        participants: participantsWithDetails,
         messages: messagesWithSender
     };
+}
+
+export function createGroupChat(name: string, memberIds: string[]) {
+    const newChat: Chat = {
+        id: `chat${Date.now()}`,
+        type: 'group',
+        name,
+        avatar: `https://placehold.co/100x100.png`,
+        participants: [
+            { userId: 'user1', role: 'admin' },
+            ...memberIds.map(id => ({ userId: id, role: 'member' as const }))
+        ],
+        messages: [{
+            id: `msg${Date.now()}`,
+            chatId: `chat${Date.now()}`,
+            senderId: 'user1',
+            content: `Grupo "${name}" criado.`,
+            timestamp: new Date().toISOString(),
+            read: true,
+            reactions: {},
+            type: 'text',
+        }]
+    };
+    chats.unshift(newChat);
+    return newChat;
+}
+
+
+export function updateParticipantRole(chatId: string, userId: string, role: 'admin' | 'member') {
+    const chatIndex = chats.findIndex(c => c.id === chatId);
+    if (chatIndex === -1) return;
+
+    const participantIndex = chats[chatIndex].participants.findIndex(p => p.userId === userId);
+    if (participantIndex === -1) return;
+
+    chats[chatIndex].participants[participantIndex].role = role;
+}
+
+export function removeParticipant(chatId: string, userId: string) {
+    const chatIndex = chats.findIndex(c => c.id === chatId);
+    if (chatIndex === -1) return;
+
+    chats[chatIndex].participants = chats[chatIndex].participants.filter(p => p.userId !== userId);
 }

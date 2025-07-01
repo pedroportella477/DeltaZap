@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from "@/lib/utils";
-import { Message as MessageType, users } from "@/lib/data";
+import { Message as MessageType } from "@/lib/data";
 import { format } from "date-fns";
 import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download } from "lucide-react";
 import {
@@ -15,7 +15,7 @@ import { Button } from './ui/button';
 import Image from 'next/image';
 
 interface MessageBubbleProps {
-  message: MessageType & { sender: ReturnType<typeof users.find> };
+  message: MessageType & { sender: { id: string, name: string, avatar: string } };
   chatType: 'group' | 'individual';
 }
 
@@ -46,7 +46,7 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
         "justify-start": !isYou,
       })}
     >
-      {!isYou && (
+      {!isYou && chatType === 'group' && (
         <Avatar className="h-8 w-8">
             <AvatarImage src={message.sender?.avatar} />
             <AvatarFallback>{message.sender?.name.charAt(0)}</AvatarFallback>
@@ -67,7 +67,7 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
                 "bg-card": !isYou && isDocument,
               })}
             >
-              {!isYou && chatType === 'group' && message.sender && !isMedia && !isDocument && (
+              {!isYou && chatType === 'group' && message.sender && (
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               

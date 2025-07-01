@@ -1,11 +1,26 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { chats, users } from "@/lib/data";
+import { chats as initialChats, users } from "@/lib/data";
 import { format, isToday, isYesterday } from "date-fns";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, PlusCircle } from "lucide-react";
+import { Button } from "./ui/button";
+import { Dialog, DialogTrigger } from "./ui/dialog";
+import { CreateGroupDialog } from "./create-group-dialog";
 
 export function ChatList() {
+  const [chats, setChats] = useState(initialChats);
+  const [isCreateGroupOpen, setCreateGroupOpen] = useState(false);
+
+  const handleGroupCreated = () => {
+    // Force a re-render by creating a new array reference
+    setChats([...initialChats]);
+    setCreateGroupOpen(false);
+  };
+
   const getChatListItem = (chatId: string) => {
     const chat = chats.find((c) => c.id === chatId);
     if (!chat) return null;
@@ -13,7 +28,7 @@ export function ChatList() {
     const lastMessage = chat.messages[chat.messages.length - 1];
     const otherUser =
       chat.type === "individual"
-        ? users.find((u) => u.id === chat.participants.find((p) => p.id !== "user1"))
+        ? users.find((u) => u.id === chat.participants.find((p) => p.userId !== "user1")?.userId)
         : null;
 
     const unreadCount = chat.messages.filter(m => m.senderId !== 'user1' && !m.read).length;
@@ -45,8 +60,16 @@ export function ChatList() {
 
   return (
     <div className="h-full flex flex-col">
-       <CardHeader className="p-4 border-b">
+       <CardHeader className="p-4 border-b flex-row items-center justify-between">
          <CardTitle className="font-headline text-2xl">Conversas</CardTitle>
+         <Dialog open={isCreateGroupOpen} onOpenChange={setCreateGroupOpen}>
+           <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <PlusCircle className="h-6 w-6" />
+              </Button>
+           </DialogTrigger>
+           <CreateGroupDialog onGroupCreated={handleGroupCreated} />
+         </Dialog>
        </CardHeader>
       <CardContent className="p-0 flex-grow overflow-y-auto">
         <div className="flex flex-col">
