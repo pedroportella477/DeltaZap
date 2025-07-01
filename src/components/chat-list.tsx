@@ -6,10 +6,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { chats as initialChats, users } from "@/lib/data";
 import { format, isToday, isYesterday } from "date-fns";
-import { Check, CheckCheck, PlusCircle } from "lucide-react";
+import { Check, CheckCheck, PlusCircle, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Dialog, DialogTrigger } from "./ui/dialog";
 import { CreateGroupDialog } from "./create-group-dialog";
+import { Input } from "./ui/input";
 
 const formatTimestamp = (timestamp: string) => {
   if (!timestamp) return "";
@@ -27,6 +28,7 @@ export function ChatList() {
   const [chats, setChats] = useState(initialChats);
   const [isCreateGroupOpen, setCreateGroupOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -64,22 +66,37 @@ export function ChatList() {
 
   const chatListItems = chats.map((chat) => getChatListItem(chat.id)).filter(Boolean);
 
+  const filteredChatListItems = chatListItems.filter(item => 
+    item!.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="h-full flex flex-col">
-       <CardHeader className="p-4 border-b flex-row items-center justify-between">
-         <CardTitle className="font-headline text-2xl">Conversas</CardTitle>
-         <Dialog open={isCreateGroupOpen} onOpenChange={setCreateGroupOpen}>
-           <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <PlusCircle className="h-6 w-6" />
-              </Button>
-           </DialogTrigger>
-           <CreateGroupDialog onGroupCreated={handleGroupCreated} />
-         </Dialog>
+       <CardHeader className="p-4 border-b">
+         <div className="flex flex-row items-center justify-between">
+            <CardTitle className="font-headline text-2xl">Conversas</CardTitle>
+            <Dialog open={isCreateGroupOpen} onOpenChange={setCreateGroupOpen}>
+              <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <PlusCircle className="h-6 w-6" />
+                  </Button>
+              </DialogTrigger>
+              <CreateGroupDialog onGroupCreated={handleGroupCreated} />
+            </Dialog>
+         </div>
+         <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+                placeholder="Pesquisar ou começar uma nova conversa" 
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+         </div>
        </CardHeader>
       <CardContent className="p-0 flex-grow overflow-y-auto">
         <div className="flex flex-col">
-          {chatListItems.map((item) => (
+          {filteredChatListItems.map((item) => (
             <Link href={`/chat/${item!.id}`} key={item!.id}>
               <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer border-b">
                 <Avatar className="h-12 w-12 mr-4">
