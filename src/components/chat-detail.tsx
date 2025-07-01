@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -61,6 +62,8 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   const [attachmentPopoverOpen, setAttachmentPopoverOpen] = useState(false);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const data = getChatData(chatId);
@@ -79,9 +82,8 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     }
   }, [messages]);
 
-  const handleSendMessage = (content?: string) => {
-    const messageContent = content || newMessage;
-    if (messageContent.trim() === "" || !chatData) return;
+  const addMessage = (content: string, type: MessageType['type'], fileName?: string) => {
+    if (content.trim() === "" || !chatData) return;
 
     const currentUser = users.find((u) => u.id === "user1");
 
@@ -90,23 +92,16 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       chatId,
       senderId: "user1",
       sender: currentUser!,
-      content: messageContent,
+      content,
       timestamp: new Date().toISOString(),
       read: false,
       reactions: {},
-      type: content ? 'image' : 'text',
+      type,
+      fileName,
     };
 
     setMessages((prevMessages) => [...prevMessages, msg]);
-    
-    if (!content) {
-      setNewMessage("");
-    } else {
-      setPopoverOpen(false);
-    }
 
-
-    // Simulate receiving a message and show notification
     setTimeout(() => {
       const otherParticipant = chatData.participants.find(
         (p) => p.id !== "user1"
@@ -141,43 +136,40 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       }
     }, 2000);
   };
-  
-  const handleSendFile = (type: 'image' | 'document') => {
-    if (!chatData) return;
-    const currentUser = users.find((u) => u.id === 'user1');
-    let msg: MessageType;
 
-    if (type === 'image') {
-      msg = {
-        id: `msg${Date.now()}`,
-        chatId,
-        senderId: 'user1',
-        sender: currentUser!,
-        content: `https://placehold.co/300x200.png?t=${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        read: false,
-        reactions: {},
-        type: 'image',
-        fileName: 'imagem-anexada.png',
-      };
-    } else {
-      msg = {
-        id: `msg${Date.now()}`,
-        chatId,
-        senderId: 'user1',
-        sender: currentUser!,
-        content: 'document_placeholder',
-        timestamp: new Date().toISOString(),
-        read: false,
-        reactions: {},
-        type: 'document',
-        fileName: 'proposta-comercial.pdf',
-      };
+  const handleSendTextMessage = () => {
+    if (newMessage.trim()) {
+      addMessage(newMessage, 'text');
+      setNewMessage("");
     }
-    setMessages((prev) => [...prev, msg]);
-    setAttachmentPopoverOpen(false);
   };
   
+  const handleSendMediaMessage = (url: string) => {
+    addMessage(url, 'image');
+    setPopoverOpen(false);
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (type === 'image' && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        addMessage(dataUrl, 'image', file.name);
+      };
+      reader.readAsDataURL(file);
+    } else if (type === 'document') {
+      addMessage('document_placeholder', 'document', file.name);
+    }
+
+    setAttachmentPopoverOpen(false);
+    if (event.target) {
+      event.target.value = '';
+    }
+  };
+
   const onEmojiClick = (emojiData: EmojiClickData) => {
     setNewMessage((prev) => prev + emojiData.emoji);
   };
@@ -262,7 +254,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
                                     {gifs.map((gif, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => handleSendMessage(gif)}
+                                            onClick={() => handleSendMediaMessage(gif)}
                                             className="rounded-md overflow-hidden focus:ring-2 focus:ring-ring"
                                         >
                                             <Image src={gif} width={100} height={100} alt={`gif ${index+1}`} data-ai-hint="gif funny" unoptimized />
@@ -277,7 +269,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
                                     {stickers.map((sticker, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => handleSendMessage(sticker)}
+                                            onClick={() => handleSendMediaMessage(sticker)}
                                             className="rounded-md overflow-hidden focus:ring-2 focus:ring-ring"
                                         >
                                             <Image src={sticker} width={100} height={100} alt={`sticker ${index+1}`} data-ai-hint="sticker cute" unoptimized/>
@@ -298,24 +290,38 @@ export function ChatDetail({ chatId }: { chatId: string }) {
                 </PopoverTrigger>
                 <PopoverContent side="top" sideOffset={8} className="w-auto p-1">
                     <div className="flex flex-col gap-1">
-                        <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => handleSendFile('image')}>
+                        <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => imageInputRef.current?.click()}>
                             <ImageIcon /> Imagem/Vídeo
                         </Button>
-                        <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => handleSendFile('document')}>
+                        <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => documentInputRef.current?.click()}>
                             <FileText /> Documento
                         </Button>
                     </div>
                 </PopoverContent>
             </Popover>
 
+            <input
+                type="file"
+                ref={imageInputRef}
+                onChange={(e) => handleFileChange(e, 'image')}
+                className="hidden"
+                accept="image/*,video/*"
+            />
+            <input
+                type="file"
+                ref={documentInputRef}
+                onChange={(e) => handleFileChange(e, 'document')}
+                className="hidden"
+            />
+
           <Input
             placeholder="Digite uma mensagem"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+            onKeyPress={(e) => e.key === "Enter" && handleSendTextMessage()}
             className="flex-grow"
           />
-          <Button size="icon" className="bg-primary hover:bg-primary/90" onClick={() => handleSendMessage()}>
+          <Button size="icon" className="bg-primary hover:bg-primary/90" onClick={handleSendTextMessage}>
             <Send className="h-5 w-5" />
           </Button>
         </div>
