@@ -66,6 +66,13 @@ export type SharedLink = {
   timestamp: string;
 };
 
+export type SupportMaterial = {
+  id: string;
+  title: string;
+  content: string;
+  timestamp: string;
+};
+
 export const users: User[] = [
   { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
   { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
@@ -145,6 +152,15 @@ export let notes: Note[] = [
     content: '- Leite\n- Pão\n- Ovos',
     color: noteColors[1],
     timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(),
+  }
+];
+
+export let supportMaterials: SupportMaterial[] = [
+  {
+    id: `support${Date.now()}`,
+    title: 'Como conectar ao servidor XMPP',
+    content: 'Certifique-se de que o servidor Openfire está em execução. Use seu JID completo (usuario@servidor) e senha para fazer login. O endereço do servidor websocket é configurado para ws://localhost:7070/ws-xmpp por padrão.',
+    timestamp: new Date().toISOString(),
   }
 ];
 
@@ -335,4 +351,40 @@ export function addReaction(chatId: string, messageId: string, emoji: string) {
   }
 
   message.reactions[emoji] = (message.reactions[emoji] || 0) + 1;
+}
+
+export function deleteMessage(chatId: string, messageId: string) {
+  const chatIndex = chats.findIndex(c => c.id === chatId);
+  if (chatIndex > -1) {
+    const messageIndex = chats[chatIndex].messages.findIndex(m => m.id === messageId);
+    if (messageIndex > -1) {
+      chats[chatIndex].messages.splice(messageIndex, 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+export function getSupportMaterials() {
+  return supportMaterials.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export function addSupportMaterial(title: string, content: string) {
+  const newMaterial: SupportMaterial = {
+    id: `support${Date.now()}`,
+    title,
+    content,
+    timestamp: new Date().toISOString(),
+  };
+  supportMaterials.unshift(newMaterial);
+  return newMaterial;
+}
+
+export function deleteSupportMaterial(id: string) {
+  const index = supportMaterials.findIndex(m => m.id === id);
+  if (index > -1) {
+    supportMaterials.splice(index, 1);
+    return true;
+  }
+  return false;
 }
