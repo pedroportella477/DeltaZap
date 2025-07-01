@@ -1,3 +1,4 @@
+
 export type UserPresence = 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
 
 export type User = {
@@ -254,13 +255,6 @@ export function removeParticipant(chatId: string, userId: string) {
     if (chatIndex === -1) return;
 
     chats[chatIndex].participants = chats[chatIndex].participants.filter(p => p.userId !== userId);
-}
-
-export function updateUserPresence(userId: string, presence: UserPresence) {
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex > -1) {
-        users[userIndex].presence = presence;
-    }
 }
 
 export function getSharedLinks(): SharedLink[] {
