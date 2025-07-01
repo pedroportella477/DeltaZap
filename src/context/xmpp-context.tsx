@@ -5,7 +5,9 @@ import React, { createContext, useContext, useState, ReactNode, useCallback, use
 import { client, xml } from '@xmpp/client';
 import type { XmppClient, Stanza } from '@xmpp/client';
 import Cookies from 'js-cookie';
-import { Chat, Message, User, users } from '@/lib/data';
+import { Chat, Message, User, UserPresence, addMessage, getChats } from '@/lib/data';
+import { serverTimestamp } from 'firebase/firestore';
+
 
 type XmppStatus = 'disconnected' | 'connecting' | 'online' | 'error' | 'restoring';
 
@@ -14,6 +16,8 @@ export interface RosterItem {
   name?: string;
   subscription: 'both' | 'to' | 'from' | 'none' | 'remove';
   groups: string[];
+  presence: UserPresence;
+  statusText?: string;
 }
 
 interface XmppContextType {
@@ -29,6 +33,8 @@ interface XmppContextType {
   sendMessage: (to: string, body: string, type?: 'text' | 'image' | 'document', fileName?: string) => void;
   markChatAsRead: (chatId: string) => void;
   getChatById: (chatId: string) => Chat | undefined;
+  sendPresence: (show: 'chat' | 'away' | 'dnd' | 'xa' | undefined, statusText?: string) => void;
+  sendUnavailablePresence: () => void;
 }
 
 const XmppContext = createContext<XmppContextType | undefined>(undefined);
@@ -43,7 +49,32 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
-  const handleIncomingMessage = useCallback((stanza: Stanza) => {
+  const handleStanza = useCallback((stanza: Stanza) => {
+    // Handle Presence
+    if (stanza.is('presence')) {
+      const from = stanza.getAttr('from').split('/')[0];
+      const type = stanza.getAttr('type');
+      const show = stanza.getChildText('show');
+      const statusText = stanza.getChildText('status');
+
+      setRoster(prevRoster =>
+        prevRoster.map(contact => {
+          if (contact.jid === from) {
+            let newPresence: UserPresence;
+            if (type === 'unavailable') {
+              newPresence = 'unavailable';
+            } else {
+              newPresence = (show as UserPresence) || 'chat';
+            }
+            return { ...contact, presence: newPresence, statusText: statusText || '' };
+          }
+          return contact;
+        })
+      );
+      return;
+    }
+    
+    // Handle Messages
     if (stanza.is('message') && stanza.getChild('body')) {
       const fromJid = stanza.getAttr('from');
       const bareFromJid = fromJid.split('/')[0];
@@ -51,26 +82,29 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const type = (stanza.getChildText('type') as Message['type']) || 'text';
       const fileName = stanza.getChildText('fileName');
 
-      if (stanza.getAttr('type') === 'chat') {
-        const newMessage: Message = {
-          id: stanza.getAttr('id') || `msg${Date.now()}`,
+      if (stanza.getAttr('type') === 'chat' && userId) {
+        const newMessage: Omit<Message, 'id'> = {
           chatId: bareFromJid,
           senderId: bareFromJid,
           content: body,
-          timestamp: new Date().toISOString(),
+          timestamp: serverTimestamp(),
           read: bareFromJid === activeChatId,
           reactions: {},
           type,
           fileName,
         };
 
+        // Save received message to Firestore
+        addMessage(userId, newMessage);
+
         setChats(prevChats => {
           const chatIndex = prevChats.findIndex(c => c.id === bareFromJid);
           let newChats = [...prevChats];
+          const fullMessage = { ...newMessage, id: stanza.getAttr('id') || `msg${Date.now()}` }
 
           if (chatIndex > -1) {
             const updatedChat = { ...newChats[chatIndex] };
-            updatedChat.messages = [...updatedChat.messages, newMessage];
+            updatedChat.messages = [...updatedChat.messages, fullMessage];
             if (bareFromJid !== activeChatId) {
                 updatedChat.unreadCount = (updatedChat.unreadCount || 0) + 1;
             }
@@ -83,16 +117,16 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               name: contact?.name || bareFromJid,
               avatar: `https://placehold.co/100x100.png`,
               participants: [{ userId: bareFromJid, role: 'member' }],
-              messages: [newMessage],
+              messages: [fullMessage],
               unreadCount: 1,
             };
             newChats.push(newChat);
           }
-          return newChats.sort((a,b) => new Date(b.messages[b.messages.length - 1]?.timestamp).getTime() - new Date(a.messages[a.messages.length - 1]?.timestamp).getTime());
+          return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
         });
       }
     }
-  }, [activeChatId, roster]);
+  }, [activeChatId, roster, userId]);
 
 
   const connect = useCallback(async (jidStr: string, passwordStr: string) => {
@@ -150,7 +184,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         cleanup();
       });
 
-      newClient.on('stanza', handleIncomingMessage);
+      newClient.on('stanza', handleStanza);
 
       newClient.on('online', async (address) => {
         console.log('Online as', address.toString());
@@ -159,11 +193,13 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const rosterStanza = await newClient.iqCaller.request(
           xml('iq', { type: 'get' }, xml('query', { xmlns: 'jabber:iq:roster' }))
         );
+        
         const items = rosterStanza.getChild('query')?.getChildren('item').map(item => ({
           jid: item.getAttr('jid'),
           name: item.getAttr('name'),
           subscription: item.getAttr('subscription'),
           groups: item.getChildren('group').map(g => g.getText()),
+          presence: 'unavailable', // Default presence
         })) || [];
         setRoster(items as RosterItem[]);
         
@@ -171,12 +207,17 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           sessionStorage.setItem('xmpp_jid', jidStr);
           sessionStorage.setItem('xmpp_password', passwordStr);
         }
+        const bareJid = address.bare().toString();
         Cookies.set('auth-jid', address.toString(), { expires: 1 });
-        Cookies.set('auth-userId', address.bare().toString(), { expires: 1 });
+        Cookies.set('auth-userId', bareJid, { expires: 1 });
         
         setJid(address.toString());
-        setUserId(address.bare().toString());
+        setUserId(bareJid);
         setStatus('online');
+        
+        // Load chat history from Firestore
+        const chatHistory = await getChats(bareJid);
+        setChats(chatHistory);
       });
 
       setXmppClient(newClient);
@@ -187,7 +228,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setStatus('error');
       setError(e.message || 'Ocorreu um erro inesperado durante a conexão.');
     }
-  }, [xmppClient, handleIncomingMessage]);
+  }, [xmppClient, handleStanza]);
 
   const disconnect = useCallback(async () => {
     if (xmppClient) {
@@ -203,7 +244,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const sendMessage = useCallback((to: string, body: string, type: Message['type'] = 'text', fileName?: string) => {
     if (!xmppClient || !userId) return;
 
-    const messageStanza = xml('message', { to, type: 'chat' }, 
+    const messageStanza = xml('message', { to, type: 'chat', id: `msg${Date.now()}` }, 
         xml('body', {}, body),
     );
     if(type !== 'text') {
@@ -215,17 +256,21 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     xmppClient.send(messageStanza);
 
-    const sentMessage: Message = {
-      id: `msg${Date.now()}`,
+    const sentMessageData: Omit<Message, 'id'> = {
       chatId: to,
       senderId: userId,
       content: body,
-      timestamp: new Date().toISOString(),
+      timestamp: serverTimestamp(),
       read: true,
       reactions: {},
       type,
       fileName,
     };
+    
+    // Add message to Firestore
+    addMessage(userId, sentMessageData);
+    
+    const sentMessage = { ...sentMessageData, id: messageStanza.getAttr('id') };
 
     setChats(prevChats => {
       const chatIndex = prevChats.findIndex(c => c.id === to);
@@ -248,7 +293,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
         newChats.push(newChat);
       }
-      return newChats.sort((a,b) => new Date(b.messages[b.messages.length - 1]?.timestamp).getTime() - new Date(a.messages[a.messages.length - 1]?.timestamp).getTime());
+      return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
     });
   }, [xmppClient, userId, roster]);
 
@@ -265,6 +310,25 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return chats.find(c => c.id === chatId);
   }, [chats]);
   
+  const sendPresence = useCallback(async (show: 'chat' | 'away' | 'dnd' | 'xa' | undefined, statusText?: string) => {
+    if (!xmppClient) return;
+    const presence = xml('presence');
+    if (show && show !== 'chat') { // 'chat' is the default, so it's not needed
+      presence.c('show', {}, show);
+    }
+    if (statusText) {
+      presence.c('status', {}, statusText);
+    }
+    await xmppClient.send(presence);
+  }, [xmppClient]);
+  
+  const sendUnavailablePresence = useCallback(async () => {
+    if (xmppClient) {
+      await xmppClient.send(xml('presence', { type: 'unavailable' }));
+    }
+  }, [xmppClient]);
+
+
   useEffect(() => {
     const savedJid = sessionStorage.getItem('xmpp_jid');
     const savedPassword = sessionStorage.getItem('xmpp_password');
@@ -274,10 +338,11 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else {
       setStatus('disconnected');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   return (
-    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect, roster, chats, sendMessage, markChatAsRead, getChatById }}>
+    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect, roster, chats, sendMessage, markChatAsRead, getChatById, sendPresence, sendUnavailablePresence }}>
       {status === 'restoring' ? (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
           <p>Restaurando sessão...</p>

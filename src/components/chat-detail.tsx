@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Message as MessageType, users } from "@/lib/data";
+import { Message as MessageType, UserPresence } from "@/lib/data";
 import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Search, Reply, X } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
@@ -28,6 +28,14 @@ const stickers = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/3o7abBUNCB4lT6dAhO/giphy.gif",
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/l41lI4bYmcsbOK6ha/giphy.gif",
 ];
+
+const presenceText: Record<UserPresence, string> = {
+    chat: 'Online',
+    away: 'Ausente',
+    dnd: 'Ocupado',
+    xa: 'Ausente (Extendido)',
+    unavailable: 'Offline',
+};
 
 export function ChatDetail({ chatId }: { chatId: string }) {
   const { roster, getChatById, sendMessage, markChatAsRead } = useXmpp();
@@ -68,7 +76,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [messages]);
+  }, [messages, chatId]);
 
 
   const handleSendTextMessage = () => {
@@ -119,16 +127,18 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   if (!contactInfo && !chatData) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p>Contato não encontrado.</p>
+        <p>Inicie uma conversa selecionando um contato.</p>
       </div>
     );
   }
 
   const lastMessageFromOther = messages.slice().reverse().find(m => m.senderId !== 'user1');
-  const chatName = chatData?.name || contactInfo?.name || chatId;
-  const chatAvatar = chatData?.avatar || 'https://placehold.co/100x100.png';
+  const chatName = contactInfo?.name || chatData?.name || chatId;
+  const chatAvatar = chatData?.avatar || `https://placehold.co/100x100.png`;
   
   const displayedMessages = searchQuery ? messages.filter(m => m.type === 'text' && m.content.toLowerCase().includes(searchQuery.toLowerCase())) : messages;
+  const contactPresenceStatus = contactInfo?.statusText || presenceText[contactInfo?.presence || 'unavailable'];
+
 
   const HeaderContent = () => (
     <div className="flex items-center">
@@ -139,10 +149,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       <div className="ml-3">
         <h2 className="font-semibold font-headline">{chatName}</h2>
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          {chatData?.type === 'group' 
-            ? `${chatData.participants.length} membros` 
-            : 'Online' // Placeholder for real presence
-          }
+          {contactPresenceStatus}
         </p>
       </div>
     </div>
@@ -193,8 +200,8 @@ export function ChatDetail({ chatId }: { chatId: string }) {
           {displayedMessages.map((message) => (
             <MessageBubble 
               key={message.id} 
-              message={{...message, sender: users.find(u => u.id === message.senderId) || {id: message.senderId, name: message.senderId, avatar: ''} }} 
-              chatType={chatData?.type || 'individual'}
+              message={{...message, sender: {id: message.senderId, name: roster.find(r => r.jid === message.senderId)?.name || message.senderId, avatar: ''} }} 
+              chatType={'individual'}
               onReply={handleReply}
               onForward={handleForward}
               searchQuery={searchQuery}

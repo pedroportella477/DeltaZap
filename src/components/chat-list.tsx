@@ -7,11 +7,23 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Search, MessageSquare } from "lucide-react";
+import { Search, MessageSquare, Circle } from "lucide-react";
 import { Input } from "./ui/input";
 import { useXmpp } from "@/context/xmpp-context";
 import { Skeleton } from "./ui/skeleton";
 import { Badge } from "./ui/badge";
+import { cn } from "@/lib/utils";
+import { UserPresence } from "@/lib/data";
+
+const presenceColor: Record<UserPresence, string> = {
+    chat: 'bg-green-500',
+    online: 'bg-green-500', // fallback
+    away: 'bg-yellow-500',
+    dnd: 'bg-red-500',
+    xa: 'bg-yellow-500',
+    unavailable: 'bg-gray-400',
+    offline: 'bg-gray-400', // fallback
+};
 
 export function ChatList() {
   const { chats, roster, status } = useXmpp();
@@ -68,6 +80,7 @@ export function ChatList() {
           <div className="flex flex-col">
             {filteredChats.map((chat) => {
                 const lastMessage = chat.messages[chat.messages.length - 1];
+                const contact = roster.find(r => r.jid === chat.id);
                 return (
                   <Link href={`/chat/${encodeURIComponent(chat.id)}`} key={chat.id}>
                     <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer border-b">
@@ -76,15 +89,18 @@ export function ChatList() {
                           <AvatarImage src={chat.avatar} alt={chat.name || chat.id} />
                           <AvatarFallback>{(chat.name || chat.id).charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
+                        {contact?.presence && contact.presence !== 'unavailable' && (
+                           <div className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background", presenceColor[contact.presence])} />
+                        )}
                       </div>
                       <div className="flex-grow overflow-hidden">
-                        <h3 className="font-semibold truncate">{chat.name || chat.id}</h3>
+                        <h3 className="font-semibold truncate">{contact?.name || chat.name || chat.id}</h3>
                         <p className="text-sm text-muted-foreground truncate flex items-center">
                           {lastMessage?.content}
                         </p>
                       </div>
                       <div className="flex flex-col items-end space-y-1 ml-2 text-xs text-muted-foreground whitespace-nowrap">
-                        {lastMessage && formatDistanceToNow(new Date(lastMessage.timestamp), { locale: ptBR, addSuffix: true })}
+                        {lastMessage && lastMessage.timestamp && formatDistanceToNow(typeof lastMessage.timestamp === 'string' ? new Date(lastMessage.timestamp) : lastMessage.timestamp.toDate(), { locale: ptBR, addSuffix: true })}
                         {chat.unreadCount && chat.unreadCount > 0 && (
                             <Badge className="h-5 w-5 flex items-center justify-center p-0">{chat.unreadCount}</Badge>
                         )}
@@ -99,10 +115,15 @@ export function ChatList() {
                  {filteredRoster.map((contact) => (
                     <Link href={`/chat/${encodeURIComponent(contact.jid)}`} key={contact.jid}>
                         <div className="flex items-center p-4 hover:bg-muted/50 cursor-pointer border-b">
-                            <Avatar className="h-12 w-12 mr-4">
-                                <AvatarImage src={`https://placehold.co/100x100.png`} alt={contact.name || contact.jid} />
-                                <AvatarFallback>{(contact.name || contact.jid).charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
+                            <div className="relative mr-4">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarImage src={`https://placehold.co/100x100.png`} alt={contact.name || contact.jid} />
+                                    <AvatarFallback>{(contact.name || contact.jid).charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                                {contact.presence && contact.presence !== 'unavailable' && (
+                                    <div className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background", presenceColor[contact.presence])} />
+                                )}
+                            </div>
                             <div className="flex-grow">
                                 <h3 className="font-semibold">{contact.name || contact.jid}</h3>
                                 <p className="text-sm text-muted-foreground truncate">{contact.jid}</p>

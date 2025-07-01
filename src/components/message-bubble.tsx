@@ -17,7 +17,7 @@ import Image from 'next/image';
 
 interface MessageBubbleProps {
   message: MessageType & { sender: { id: string, name: string, avatar: string } };
-  chatType: 'group' | 'individual';
+  chatType: 'individual';
   onReply: (message: MessageType) => void;
   onForward: (message: MessageType) => void;
   searchQuery?: string;
@@ -47,7 +47,7 @@ const highlightText = (text: string, highlight: string) => {
 export default function MessageBubble({ message, chatType, onReply, onForward, searchQuery }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
   const [isMounted, setIsMounted] = useState(false);
-  const isYou = message.senderId === "user1";
+  const isYou = message.senderId.startsWith(process.env.NEXT_PUBLIC_USER_ID_PREFIX || "user1"); // A better check for current user might be needed
 
   useEffect(() => {
     setIsMounted(true);
@@ -69,6 +69,17 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
 
   const isMedia = message.type === 'image';
   const isDocument = message.type === 'document';
+
+  const getDate = () => {
+    if (!message.timestamp) return null;
+    // Handle both Firestore Timestamp and ISO string
+    const date = typeof message.timestamp === 'string' 
+      ? new Date(message.timestamp) 
+      : message.timestamp.toDate();
+    return date;
+  }
+
+  const formattedTime = isMounted ? (getDate() ? format(getDate()!, "HH:mm") : '') : '';
   
   const RepliedMessage = () => {
       if (!message.replyTo) return null;
@@ -118,7 +129,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
                 "bg-card": !isYou && isDocument,
               })}
             >
-              {!isYou && chatType === 'group' && message.sender && (
+              {message.sender && (
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               
@@ -137,7 +148,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
                   />
                   <div className="absolute bottom-1 right-1 flex items-center justify-end gap-2">
                     <p className="text-xs text-white drop-shadow-md bg-black/20 px-1.5 py-0.5 rounded-full">
-                      {isMounted ? format(new Date(message.timestamp), "HH:mm") : ''}
+                      {formattedTime}
                     </p>
                     {isYou &&
                       (message.read ? (
@@ -169,7 +180,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
               {message.type === 'text' && (
                 <div className="flex items-center justify-end gap-2 mt-1">
                   <p className="text-xs opacity-70">
-                    {isMounted ? format(new Date(message.timestamp), "HH:mm") : ''}
+                    {formattedTime}
                   </p>
                   {isYou &&
                     (message.read ? (

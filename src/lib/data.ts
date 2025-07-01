@@ -11,17 +11,21 @@ import {
   updateDoc,
   deleteDoc,
   serverTimestamp,
-  getDoc
+  getDoc,
+  setDoc,
+  limit
 } from 'firebase/firestore';
 
-export type UserPresence = 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
+// Core XMPP presence states
+export type UserPresence = 'chat' | 'away' | 'dnd' | 'xa' | 'unavailable';
 
 export type User = {
   id: string;
   name: string;
   avatar: string;
   status: string;
-  presence: UserPresence;
+  // This represents the user's friendly presence status for the UI
+  presence: 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
 };
 
 export type Participant = {
@@ -34,7 +38,7 @@ export type Message = {
   chatId: string;
   senderId: string;
   content: string;
-  timestamp: string;
+  timestamp: any; // Firestore Timestamp
   read: boolean;
   reactions: { [emoji: string]: number };
   type: 'text' | 'image' | 'document';
@@ -48,13 +52,14 @@ export type Message = {
 };
 
 export type Chat = {
-  id: string;
-  type: "individual" | "group";
+  id:string;
+  type: "individual"; // Removed "group" as it's not implemented
   name?: string;
   avatar?: string;
   participants: Participant[];
   messages: Message[];
   unreadCount?: number;
+  lastUpdated?: any;
 };
 
 export type Status = {
@@ -105,7 +110,6 @@ export const users: User[] = [
   { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
   { id: "user3", name: "Pedro Portella", avatar: "https://placehold.co/100x100.png", status: "Ocupado com o trabalho.", presence: "ocupado" },
   { id: "user4", name: "Tamiris Mendes", avatar: "https://placehold.co/100x100.png", status: "Na academia.", presence: "online" },
-  { id: "user5", name: "Equipe de Design", avatar: "https://placehold.co/100x100.png", status: "", presence: "cafe" },
 ];
 
 const now = new Date();
@@ -125,6 +129,50 @@ const noteColors = [
 ];
 
 const MAX_NOTES = 200;
+
+// --- Chat History Firestore Functions ---
+export async function getChats(userId: string): Promise<Chat[]> {
+  const chatsCol = collection(db, 'users', userId, 'chats');
+  const q = query(chatsCol, orderBy('lastUpdated', 'desc'));
+  const querySnapshot = await getDocs(q);
+
+  const chats = await Promise.all(querySnapshot.docs.map(async (doc) => {
+    const chatData = doc.data() as Omit<Chat, 'id' | 'messages'>;
+    const messagesCol = collection(db, 'users', userId, 'chats', doc.id, 'messages');
+    // Load last 50 messages for performance. Could be paginated later.
+    const messagesQuery = query(messagesCol, orderBy('timestamp', 'desc'), limit(50));
+    const messagesSnapshot = await getDocs(messagesQuery);
+    const messages = messagesSnapshot.docs.map(msgDoc => ({ id: msgDoc.id, ...msgDoc.data() } as Message)).reverse();
+    
+    return {
+      id: doc.id,
+      ...chatData,
+      messages,
+    } as Chat;
+  }));
+
+  return chats;
+}
+
+export async function addMessage(userId: string, message: Omit<Message, 'id'>) {
+    const { chatId } = message;
+    
+    // Path to the chat document for this user
+    const chatRef = doc(db, 'users', userId, 'chats', chatId);
+
+    // Path to the messages subcollection for this chat
+    const messagesCol = collection(chatRef, 'messages');
+
+    // Add the message to the subcollection
+    await addDoc(messagesCol, message);
+
+    // Update the `lastUpdated` timestamp on the chat document
+    // This also creates the chat document if it doesn't exist
+    await setDoc(chatRef, { 
+        id: chatId, 
+        lastUpdated: message.timestamp 
+    }, { merge: true });
+}
 
 export async function getNotes(userId: string): Promise<Note[]> {
   if (!userId) return [];

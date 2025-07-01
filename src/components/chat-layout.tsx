@@ -20,7 +20,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
 import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle } from "lucide-react";
-import { users, UserPresence } from "@/lib/data";
+import { users } from "@/lib/data";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,21 +43,22 @@ const Logo = () => (
     </div>
 )
 
-const presenceOptions: { value: UserPresence, label: string, icon: React.ReactNode }[] = [
-    { value: 'online', label: 'Online', icon: <Circle className="h-2.5 w-2.5 text-green-500 fill-current" /> },
-    { value: 'ocupado', label: 'Ocupado', icon: <MinusCircle className="h-2.5 w-2.5 text-red-500" /> },
-    { value: 'cafe', label: 'Pausa para o café', icon: <Coffee className="h-2.5 w-2.5 text-amber-500" /> },
-    { value: 'almoco', label: 'Em almoço', icon: <Utensils className="h-2.5 w-2.5 text-orange-500" /> },
-    { value: 'offline', label: 'Invisível', icon: <Circle className="h-2.5 w-2.5 text-gray-400" /> },
+const presenceOptions: { value: string; label: string; icon: React.ReactNode; xmpp: { show?: 'chat' | 'away' | 'dnd' | 'xa'; type?: 'unavailable'; status?: string } }[] = [
+    { value: 'online', label: 'Online', icon: <Circle className="h-2.5 w-2.5 text-green-500 fill-current" />, xmpp: { show: 'chat' } },
+    { value: 'ocupado', label: 'Ocupado', icon: <MinusCircle className="h-2.5 w-2.5 text-red-500" />, xmpp: { show: 'dnd', status: 'Ocupado' } },
+    { value: 'cafe', label: 'Pausa para o café', icon: <Coffee className="h-2.5 w-2.5 text-amber-500" />, xmpp: { show: 'away', status: 'Pausa para o café' } },
+    { value: 'almoco', label: 'Em almoço', icon: <Utensils className="h-2.5 w-2.5 text-orange-500" />, xmpp: { show: 'away', status: 'Em almoço' } },
+    { value: 'offline', label: 'Invisível', icon: <Circle className="h-2.5 w-2.5 text-gray-400" />, xmpp: { type: 'unavailable' } },
 ];
+
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
   const [currentUser] = useState(users.find((u) => u.id === "user1")!);
-  const { disconnect, jid } = useXmpp();
-  const [presence, setPresence] = useState<UserPresence>('online');
+  const { disconnect, jid, sendPresence, sendUnavailablePresence } = useXmpp();
+  const [presence, setPresence] = useState('online');
 
   const handleLogout = async () => {
     await disconnect();
@@ -67,10 +68,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   };
   
   const handlePresenceChange = (value: string) => {
-    const newPresence = value as UserPresence;
-    setPresence(newPresence);
-    // TODO: Send presence update via XMPP
-    toast({ title: "Status alterado!", description: `Você agora está ${presenceOptions.find(p => p.value === newPresence)?.label}.`});
+    setPresence(value);
+    const option = presenceOptions.find(p => p.value === value);
+    if (option) {
+        if (option.xmpp.type === 'unavailable') {
+            sendUnavailablePresence();
+        } else {
+            sendPresence(option.xmpp.show, option.xmpp.status);
+        }
+    }
+    toast({ title: "Status alterado!", description: `Você agora está ${option?.label}.`});
   }
 
   return (
