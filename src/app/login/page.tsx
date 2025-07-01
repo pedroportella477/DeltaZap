@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -24,13 +23,18 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 const Logo = () => (
-    <div className="flex items-center gap-2" data-ai-hint="logo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary">
-            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-        </svg>
-        <h1 className="text-xl font-bold font-headline text-foreground">DeltaZap</h1>
+    <div className="flex flex-col items-center" data-ai-hint="logo chat">
+        <div className="bg-primary/10 p-3 rounded-full border-4 border-primary/20 shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-12 w-12 text-primary drop-shadow-lg">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
+        <h1 className="font-headline text-5xl font-bold tracking-tighter bg-gradient-to-r from-primary via-accent to-blue-500 bg-clip-text text-transparent pt-2 drop-shadow-sm">
+            DeltaZap
+        </h1>
     </div>
 )
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -59,13 +63,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background bg-whatsapp-doodles p-4">
-      <Card className="w-full max-w-sm shadow-2xl bg-card/80 dark:bg-card/60 backdrop-blur-lg">
-        <CardHeader className="text-center">
-          <div className='flex justify-center mb-4'>
+      <Card className="w-full max-w-sm shadow-2xl bg-card/90 dark:bg-card/70 backdrop-blur-lg border border-primary/10">
+        <CardHeader className="items-center text-center">
             <Logo />
-          </div>
-          <CardTitle>Bem-vindo(a) de volta!</CardTitle>
-          <CardDescription>Faça login na sua conta Openfire para continuar.</CardDescription>
+            <div className='pt-4'>
+                <CardTitle>Bem-vindo(a) de volta!</CardTitle>
+                <CardDescription>Faça login na sua conta Openfire para continuar.</CardDescription>
+            </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

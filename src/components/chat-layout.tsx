@@ -35,9 +35,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useXmpp } from "@/context/xmpp-context";
 
 const Logo = () => (
-    <div className="flex items-center gap-2" data-ai-hint="logo">
+    <div className="flex items-center gap-2" data-ai-hint="logo chat">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary">
-            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         <h1 className="text-xl font-bold font-headline text-foreground">DeltaZap</h1>
     </div>
