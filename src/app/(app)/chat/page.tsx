@@ -24,7 +24,7 @@ export default function ChatPage() {
             return format(date, 'HH:mm');
         }
         if (isYesterday(date)) {
-            return 'Yesterday';
+            return 'Ontem';
         }
         return format(date, 'dd/MM/yyyy');
     }
@@ -33,7 +33,7 @@ export default function ChatPage() {
       id: chat.id,
       name: chat.name || otherUser?.name || "Unknown",
       avatar: chat.avatar || otherUser?.avatar || "",
-      lastMessage: lastMessage?.content || "No messages yet",
+      lastMessage: lastMessage?.content || "Nenhuma mensagem ainda",
       timestamp: lastMessage ? formatTimestamp(lastMessage.timestamp) : "",
       isRead: lastMessage?.senderId === 'user1' ? lastMessage.read : true,
       isSentByYou: lastMessage?.senderId === 'user1',
@@ -46,7 +46,7 @@ export default function ChatPage() {
   return (
     <div className="h-full flex flex-col">
        <CardHeader className="p-4 border-b">
-         <CardTitle className="font-headline text-2xl">Chats</CardTitle>
+         <CardTitle className="font-headline text-2xl">Conversas</CardTitle>
        </CardHeader>
       <CardContent className="p-0 flex-grow overflow-y-auto">
         <div className="flex flex-col">

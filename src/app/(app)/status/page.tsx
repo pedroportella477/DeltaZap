@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { users, statuses as initialStatuses, User } from "@/lib/data";
 import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Camera, Edit, MoreHorizontal, Trash2 } from "lucide-react";
 import {
   Dialog,
@@ -51,8 +52,8 @@ export default function StatusPage() {
               </div>
             </div>
             <div>
-              <p className="font-semibold">My status</p>
-              <p className="text-sm text-muted-foreground">{currentUser.status || "No status set"}</p>
+              <p className="font-semibold">Meu status</p>
+              <p className="text-sm text-muted-foreground">{currentUser.status || "Nenhum status definido"}</p>
             </div>
             <Dialog>
               <DialogTrigger asChild>
@@ -62,23 +63,23 @@ export default function StatusPage() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Edit your status</DialogTitle>
+                  <DialogTitle>Edite seu status</DialogTitle>
                 </DialogHeader>
                 <Textarea 
-                  placeholder="What's on your mind?"
+                  placeholder="O que você está pensando?"
                   defaultValue={currentUser.status}
                   onChange={(e) => setNewStatus(e.target.value)}
                 />
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button onClick={handleStatusUpdate}>Save</Button>
+                    <Button onClick={handleStatusUpdate}>Salvar</Button>
                   </DialogClose>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
 
-          <h3 className="text-sm font-semibold text-muted-foreground my-4">RECENT UPDATES</h3>
+          <h3 className="text-sm font-semibold text-muted-foreground my-4">ATUALIZAÇÕES RECENTES</h3>
 
           {/* Other users' statuses */}
           {statuses.map(status => {
@@ -95,14 +96,14 @@ export default function StatusPage() {
                     </Avatar>
                     <div>
                       <p className="font-semibold">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(status.timestamp))} ago</p>
+                      <p className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(status.timestamp), { locale: ptBR, addSuffix: true })}</p>
                     </div>
                   </div>
                 </DialogTrigger>
                 <DialogContent className="max-w-md p-0">
                   <div className="relative">
                     {status.type === 'image' ? (
-                      <Image src={status.content} alt={`${user.name}'s status`} width={400} height={700} className="rounded-t-lg object-cover w-full h-[70vh]"/>
+                      <Image src={status.content} alt={`Status de ${user.name}`} width={400} height={700} className="rounded-t-lg object-cover w-full h-[70vh]"/>
                     ) : (
                       <div className="h-[70vh] flex items-center justify-center p-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-t-lg">
                         <p className="text-white text-3xl text-center font-headline">{status.content}</p>

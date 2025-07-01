@@ -120,7 +120,7 @@ export default function ChatDetailPage() {
           senderId: otherParticipant.id,
           sender: otherParticipant,
           content:
-            "This is an automated reply to demonstrate notifications!",
+            "Esta é uma resposta automática para demonstrar as notificações!",
           timestamp: new Date().toISOString(),
           read: false,
           reactions: {},
@@ -129,12 +129,12 @@ export default function ChatDetailPage() {
         setMessages((prev) => [...prev, replyMessage]);
 
         toast({
-          title: `New message from ${otherParticipant.name}`,
+          title: `Nova mensagem de ${otherParticipant.name}`,
           description: replyMessage.content,
           action: (
             <Link href={`/chat/${chatData.id}`} passHref>
               <Button variant="outline" size="sm">
-                View
+                Ver
               </Button>
             </Link>
           ),
@@ -151,7 +151,7 @@ export default function ChatDetailPage() {
   if (!chatData) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p>Loading chat...</p>
+        <p>Carregando conversa...</p>
       </div>
     );
   }
@@ -173,7 +173,7 @@ export default function ChatDetailPage() {
         <div className="ml-3">
           <h2 className="font-semibold font-headline">{chatData.name}</h2>
           <p className="text-xs text-muted-foreground">
-            {chatData.type === 'group' ? `${chatData.participants.length} members` : 'online'}
+            {chatData.type === 'group' ? `${chatData.participants.length} membros` : 'online'}
           </p>
         </div>
         <div className="ml-auto">
@@ -209,7 +209,7 @@ export default function ChatDetailPage() {
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="emoji">Emoji</TabsTrigger>
                             <TabsTrigger value="gif">GIFs</TabsTrigger>
-                            <TabsTrigger value="sticker">Stickers</TabsTrigger>
+                            <TabsTrigger value="sticker">Figurinhas</TabsTrigger>
                         </TabsList>
                         <TabsContent value="emoji" className="p-2">
                            <EmojiPicker
@@ -255,7 +255,7 @@ export default function ChatDetailPage() {
                 </PopoverContent>
             </Popover>
           <Input
-            placeholder="Type a message"
+            placeholder="Digite uma mensagem"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}

@@ -19,15 +19,15 @@ export default function ProfilePage() {
   const handleSave = () => {
     setUser({ ...user, name, status });
     toast({
-      title: "Profile Updated",
-      description: "Your changes have been saved.",
+      title: "Perfil Atualizado",
+      description: "Suas alterações foram salvas.",
     });
   };
 
   return (
     <div className="h-full flex flex-col">
        <CardHeader className="p-4 border-b">
-         <CardTitle className="font-headline text-2xl">Profile</CardTitle>
+         <CardTitle className="font-headline text-2xl">Perfil</CardTitle>
        </CardHeader>
        <CardContent className="p-6 flex-grow overflow-y-auto flex flex-col items-center">
         <div className="relative mb-6">
@@ -47,7 +47,7 @@ export default function ProfilePage() {
         
         <div className="w-full max-w-sm space-y-6">
             <div className="space-y-2">
-                <Label htmlFor="name" className="text-muted-foreground">Your Name</Label>
+                <Label htmlFor="name" className="text-muted-foreground">Seu Nome</Label>
                 <div className="flex items-center gap-2">
                     <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="text-lg" />
                     <Edit2 className="h-5 w-5 text-muted-foreground" />
@@ -55,7 +55,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="status" className="text-muted-foreground">About</Label>
+                <Label htmlFor="status" className="text-muted-foreground">Sobre</Label>
                  <div className="flex items-center gap-2">
                     <Input id="status" value={status} onChange={(e) => setStatus(e.target.value)} />
                     <Edit2 className="h-5 w-5 text-muted-foreground" />
@@ -63,7 +63,7 @@ export default function ProfilePage() {
             </div>
 
             <Button onClick={handleSave} className="w-full" size="lg">
-                Save Changes
+                Salvar Alterações
             </Button>
         </div>
        </CardContent>

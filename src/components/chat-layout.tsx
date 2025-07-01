@@ -48,9 +48,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <SidebarMenu>
               <SidebarMenuItem>
                 <Link href="/chat">
-                  <SidebarMenuButton isActive={pathname.startsWith('/chat')} tooltip="Chats">
+                  <SidebarMenuButton isActive={pathname.startsWith('/chat')} tooltip="Conversas">
                     <MessageSquare />
-                    <span>Chats</span>
+                    <span>Conversas</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
@@ -64,9 +64,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/profile">
-                  <SidebarMenuButton isActive={pathname.startsWith('/profile')} tooltip="Profile">
+                  <SidebarMenuButton isActive={pathname.startsWith('/profile')} tooltip="Perfil">
                     <User />
-                    <span>Profile</span>
+                    <span>Perfil</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>

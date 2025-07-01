@@ -33,11 +33,11 @@ export type Status = {
 };
 
 export const users: User[] = [
-  { id: "user1", name: "You", avatar: "https://placehold.co/100x100.png", status: "Coding something cool! ✨" },
-  { id: "user2", name: "Alice", avatar: "https://placehold.co/100x100.png", status: "On a vacation!" },
-  { id: "user3", name: "Bob", avatar: "https://placehold.co/100x100.png", status: "Busy with work." },
-  { id: "user4", name: "Charlie", avatar: "https://placehold.co/100x100.png", status: "At the gym." },
-  { id: "user5", name: "Design Team", avatar: "https://placehold.co/100x100.png", status: "" },
+  { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨" },
+  { id: "user2", name: "Alice", avatar: "https://placehold.co/100x100.png", status: "De férias!" },
+  { id: "user3", name: "Beto", avatar: "https://placehold.co/100x100.png", status: "Ocupado com o trabalho." },
+  { id: "user4", name: "Carlos", avatar: "https://placehold.co/100x100.png", status: "Na academia." },
+  { id: "user5", name: "Equipe de Design", avatar: "https://placehold.co/100x100.png", status: "" },
 ];
 
 const now = new Date();
@@ -48,23 +48,23 @@ export const chats: Chat[] = [
     type: "individual",
     participants: ["user1", "user2"],
     messages: [
-      { id: "msg1", chatId: "chat1", senderId: "user2", content: "Hey! How's it going?", timestamp: new Date(now.getTime() - 10 * 60000).toISOString(), read: true, reactions: { '👍': 1 } },
-      { id: "msg2", chatId: "chat1", senderId: "user1", content: "Pretty good, just working on a new project. You?", timestamp: new Date(now.getTime() - 9 * 60000).toISOString(), read: true, reactions: {} },
-      { id: "msg3", chatId: "chat1", senderId: "user2", content: "Nice! I'm planning a trip for next month.", timestamp: new Date(now.getTime() - 8 * 60000).toISOString(), read: true, reactions: { '❤️': 2 } },
-      { id: "msg4", chatId: "chat1", senderId: "user2", content: "Any suggestions?", timestamp: new Date(now.getTime() - 7 * 60000).toISOString(), read: false, reactions: {} },
+      { id: "msg1", chatId: "chat1", senderId: "user2", content: "Olá! Como vai?", timestamp: new Date(now.getTime() - 10 * 60000).toISOString(), read: true, reactions: { '👍': 1 } },
+      { id: "msg2", chatId: "chat1", senderId: "user1", content: "Tudo bem, apenas trabalhando em um novo projeto. E você?", timestamp: new Date(now.getTime() - 9 * 60000).toISOString(), read: true, reactions: {} },
+      { id: "msg3", chatId: "chat1", senderId: "user2", content: "Legal! Estou planejando uma viagem para o próximo mês.", timestamp: new Date(now.getTime() - 8 * 60000).toISOString(), read: true, reactions: { '❤️': 2 } },
+      { id: "msg4", chatId: "chat1", senderId: "user2", content: "Alguma sugestão?", timestamp: new Date(now.getTime() - 7 * 60000).toISOString(), read: false, reactions: {} },
     ],
   },
   {
     id: "chat2",
     type: "group",
-    name: "Project Delta",
+    name: "Projeto Delta",
     avatar: "https://placehold.co/100x100.png",
     participants: ["user1", "user3", "user4"],
     messages: [
-      { id: "msg5", chatId: "chat2", senderId: "user3", content: "Hey team, what's the status on the new feature?", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000).toISOString(), read: true, reactions: {} },
-      { id: "msg6", chatId: "chat2", senderId: "user4", content: "I've pushed the latest updates to the dev branch.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString(), read: true, reactions: { '🚀': 1 } },
-      { id: "msg7", chatId: "chat2", senderId: "user1", content: "Great, I'll review it this afternoon.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 10 * 60000).toISOString(), read: true, reactions: {} },
-      { id: "msg8", chatId: "chat2", senderId: "user3", content: "Perfect. Let me know if there are any issues.", timestamp: new Date(now.getTime() - 5 * 60000).toISOString(), read: false, reactions: {} },
+      { id: "msg5", chatId: "chat2", senderId: "user3", content: "Olá equipe, qual é o status da nova funcionalidade?", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000).toISOString(), read: true, reactions: {} },
+      { id: "msg6", chatId: "chat2", senderId: "user4", content: "Enviei as últimas atualizações para a branch de desenvolvimento.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 5 * 60000).toISOString(), read: true, reactions: { '🚀': 1 } },
+      { id: "msg7", chatId: "chat2", senderId: "user1", content: "Ótimo, vou revisar hoje à tarde.", timestamp: new Date(now.getTime() - 2 * 24 * 60 * 60000 + 10 * 60000).toISOString(), read: true, reactions: {} },
+      { id: "msg8", chatId: "chat2", senderId: "user3", content: "Perfeito. Me avise se houver algum problema.", timestamp: new Date(now.getTime() - 5 * 60000).toISOString(), read: false, reactions: {} },
     ],
   },
   {
@@ -72,16 +72,16 @@ export const chats: Chat[] = [
     type: "individual",
     participants: ["user1", "user4"],
     messages: [
-      { id: "msg9", chatId: "chat3", senderId: "user4", content: "Gym session was intense today!", timestamp: new Date(now.getTime() - 3 * 60 * 60000).toISOString(), read: true, reactions: {} },
-      { id: "msg10", chatId: "chat3", senderId: "user1", content: "Haha, I bet! I'm planning to go tomorrow.", timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), read: false, reactions: {} },
+      { id: "msg9", chatId: "chat3", senderId: "user4", content: "A sessão de academia hoje foi intensa!", timestamp: new Date(now.getTime() - 3 * 60 * 60000).toISOString(), read: true, reactions: {} },
+      { id: "msg10", chatId: "chat3", senderId: "user1", content: "Haha, imagino! Estou planejando ir amanhã.", timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), read: false, reactions: {} },
     ],
   },
 ];
 
 export const statuses: Status[] = [
-    { id: 'status1', userId: 'user2', content: 'Enjoying the beach life! 🏖️', timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), type: 'text' },
+    { id: 'status1', userId: 'user2', content: 'Aproveitando a vida na praia! 🏖️', timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), type: 'text' },
     { id: 'status2', userId: 'user3', content: 'https://placehold.co/300x500.png', timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(), type: 'image' },
-    { id: 'status3', userId: 'user4', content: 'New personal best! #fitness', timestamp: new Date(now.getTime() - 8 * 60 * 60000).toISOString(), type: 'text' },
+    { id: 'status3', userId: 'user4', content: 'Novo recorde pessoal! #fitness', timestamp: new Date(now.getTime() - 8 * 60 * 60000).toISOString(), type: 'text' },
 ];
 
 export function getChatData(chatId: string) {
