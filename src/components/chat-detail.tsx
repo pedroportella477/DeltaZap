@@ -1,23 +1,20 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Message as MessageType, users, UserPresence } from "@/lib/data";
-import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Circle, MinusCircle, Coffee, Utensils, Search, Reply, X } from "lucide-react";
+import { Message as MessageType, users } from "@/lib/data";
+import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText, Search, Reply, X } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
-import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
-import { GroupInfoSheet } from "./group-info-sheet";
 import { ForwardMessageDialog } from "./forward-message-dialog";
 import { useXmpp } from "@/context/xmpp-context";
 
@@ -32,20 +29,11 @@ const stickers = [
   "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExOWJpY3o4a25xZ2F4a2ZqNXE4enE3ZHA3dG5zaG00ZHM1dzluM2M4eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/l41lI4bYmcsbOK6ha/giphy.gif",
 ];
 
-const presenceStatus: Record<UserPresence, { icon: React.ReactNode; label: string }> = {
-  online: { icon: <Circle className="h-2.5 w-2.5 text-green-500 fill-current" />, label: 'Online' },
-  ocupado: { icon: <MinusCircle className="h-2.5 w-2.5 text-red-500" />, label: 'Ocupado' },
-  cafe: { icon: <Coffee className="h-2.5 w-2.5 text-amber-500" />, label: 'Café' },
-  almoco: { icon: <Utensils className="h-2.5 w-2.5 text-orange-500" />, label: 'Almoço' },
-  offline: { icon: <Circle className="h-2.5 w-2.5 text-gray-400" />, label: 'Offline' },
-};
-
 export function ChatDetail({ chatId }: { chatId: string }) {
   const { roster, getChatById, sendMessage, markChatAsRead } = useXmpp();
   const [newMessage, setNewMessage] = useState("");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [attachmentPopoverOpen, setAttachmentPopoverOpen] = useState(false);
-  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
@@ -177,48 +165,28 @@ export function ChatDetail({ chatId }: { chatId: string }) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <Sheet open={isGroupInfoOpen} onOpenChange={setIsGroupInfoOpen}>
-        <header className="flex items-center p-3 border-b bg-card">
-          <Link href="/chat" className="md:hidden mr-2">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft />
-            </Button>
-          </Link>
-          
-          {isSearching ? <SearchBar /> : (
-            <>
-              {chatData?.type === 'group' ? (
-                <SheetTrigger asChild className="cursor-pointer flex-grow">
-                  <HeaderContent />
-                </SheetTrigger>
-              ) : (
-                <HeaderContent />
-              )}
+      <header className="flex items-center p-3 border-b bg-card">
+        <Link href="/chat" className="md:hidden mr-2">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft />
+          </Button>
+        </Link>
+        
+        {isSearching ? <SearchBar /> : (
+          <>
+            <HeaderContent />
 
-              <div className="ml-auto flex items-center">
-                <Button variant="ghost" size="icon" onClick={() => setIsSearching(true)}>
-                  <Search />
-                </Button>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical />
-                </Button>
-              </div>
-            </>
-          )}
-        </header>
-
-        {chatData?.type === 'group' && (
-          <SheetContent className="w-full sm:w-[420px] p-0 flex flex-col">
-              <GroupInfoSheet 
-                chatId={chatData.id}
-                onGroupUpdate={() => {
-                  // This is now handled by context, no need for manual refresh
-                  setTimeout(() => setIsGroupInfoOpen(false), 300);
-                }} 
-              />
-          </SheetContent>
+            <div className="ml-auto flex items-center">
+              <Button variant="ghost" size="icon" onClick={() => setIsSearching(true)}>
+                <Search />
+              </Button>
+              <Button variant="ghost" size="icon">
+                <MoreVertical />
+              </Button>
+            </div>
+          </>
         )}
-      </Sheet>
+      </header>
 
       <ScrollArea className="flex-grow" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
@@ -246,7 +214,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
               <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={cancelReply}>
                   <X className="h-4 w-4" />
               </Button>
-              <p className="text-sm font-semibold text-primary">Respondendo a {replyingTo.sender.name}</p>
+              <p className="text-sm font-semibold text-primary">Respondendo a {replyingTo.sender?.name || '...'}</p>
               <p className="text-sm text-muted-foreground truncate">{replyingTo.content}</p>
            </div>
         )}

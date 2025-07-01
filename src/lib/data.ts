@@ -110,8 +110,6 @@ export const users: User[] = [
 
 const now = new Date();
 
-export let chats: Chat[] = [];
-
 export const statuses: Status[] = [
     { id: 'status1', userId: 'user2', content: 'Aproveitando a vida na praia! 🏖️', timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), type: 'text' },
     { id: 'status2', userId: 'user3', content: 'https://placehold.co/300x500.png', timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(), type: 'image' },
@@ -173,29 +171,9 @@ export async function deleteNote(noteId: string): Promise<void> {
   await deleteDoc(doc(db, 'notes', noteId));
 }
 
-export function getChatData(chatId: string) {
-    const chat = chats.find(c => c.id === chatId);
-    if (!chat) return null;
-
-    const participantsWithDetails = chat.participants.map(p => {
-        const user = users.find(u => u.id === p.userId)!;
-        return { ...user, role: p.role };
-    });
-
-    const messagesWithSender = chat.messages.map(m => ({
-        ...m,
-        sender: users.find(u => u.id === m.senderId)!
-    }));
-    
-    const otherParticipant = chat.type === 'individual' ? participantsWithDetails.find(p => p.id !== 'user1') : null;
-    
-    return {
-        ...chat,
-        name: chat.name || otherParticipant?.name,
-        avatar: chat.avatar || otherParticipant?.avatar,
-        participants: participantsWithDetails,
-        messages: messagesWithSender
-    };
+// Mock function for adding a reaction, since this is not implemented in the XMPP context yet
+export function addReaction(chatId: string, messageId: string, emoji: string) {
+  console.log(`Reacted with ${emoji} to message ${messageId} in chat ${chatId}`);
 }
 
 

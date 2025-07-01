@@ -155,7 +155,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
                         <p className="text-xs text-muted-foreground">Documento</p>
                     </div>
                      <Button variant="ghost" size="icon" className="shrink-0" asChild>
-                        <a href="#" download={message.fileName}>
+                        <a href={message.content} download={message.fileName}>
                             <Download className="h-5 w-5" />
                         </a>
                     </Button>

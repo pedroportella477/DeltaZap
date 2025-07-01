@@ -7,8 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { PlusCircle, Search, MessageSquare } from "lucide-react";
-import { Button } from "./ui/button";
+import { Search, MessageSquare } from "lucide-react";
 import { Input } from "./ui/input";
 import { useXmpp } from "@/context/xmpp-context";
 import { Skeleton } from "./ui/skeleton";
@@ -35,9 +34,6 @@ export function ChatList() {
        <CardHeader className="p-4 border-b">
          <div className="flex flex-row items-center justify-between">
             <CardTitle className="font-headline text-2xl">Conversas</CardTitle>
-             <Button variant="ghost" size="icon" disabled>
-                <PlusCircle className="h-6 w-6" />
-             </Button>
          </div>
          <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
