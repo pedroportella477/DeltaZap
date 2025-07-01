@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { cn } from "@/lib/utils";
 import { Message as MessageType, users } from "@/lib/data";
 import { format } from "date-fns";
-import { Check, CheckCheck, Heart, Smile, ThumbsUp } from "lucide-react";
+import { Check, CheckCheck, Heart, Smile, ThumbsUp, FileText, Download } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -18,12 +18,6 @@ interface MessageBubbleProps {
   message: MessageType & { sender: ReturnType<typeof users.find> };
   chatType: 'group' | 'individual';
 }
-
-const isMediaURL = (url: string): boolean => {
-  if (typeof url !== 'string') return false;
-  return url.startsWith('https://media.giphy.com/') || url.startsWith('https://placehold.co/');
-};
-
 
 export default function MessageBubble({ message, chatType }: MessageBubbleProps) {
   const [reactions, setReactions] = useState(message.reactions || {});
@@ -42,7 +36,8 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
     "😄": <Smile className="h-4 w-4 text-yellow-500 fill-current" />,
   }
 
-  const isMedia = isMediaURL(message.content);
+  const isMedia = message.type === 'image';
+  const isDocument = message.type === 'document';
 
   return (
     <div
@@ -63,13 +58,16 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
           <PopoverTrigger asChild>
             <div
               className={cn("max-w-xs md:max-w-md lg:max-w-lg rounded-lg shadow-md", {
-                "bg-secondary text-secondary-foreground": isYou && !isMedia,
-                "bg-card": !isYou && !isMedia,
+                "bg-secondary text-secondary-foreground": isYou && message.type === 'text',
+                "bg-card": !isYou && message.type === 'text',
                 "p-0 bg-transparent": isMedia,
-                "px-3 py-2": !isMedia,
+                "px-3 py-2": message.type === 'text',
+                "p-2": isDocument,
+                "bg-secondary": isYou && isDocument,
+                "bg-card": !isYou && isDocument,
               })}
             >
-              {!isYou && chatType === 'group' && message.sender && !isMedia && (
+              {!isYou && chatType === 'group' && message.sender && !isMedia && !isDocument && (
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               
@@ -82,11 +80,24 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
                   className="rounded-md object-cover"
                   unoptimized
                 />
+              ) : isDocument ? (
+                <div className="flex items-center gap-3">
+                    <FileText className="h-8 w-8 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium break-words truncate">{message.fileName}</p>
+                        <p className="text-xs text-muted-foreground">Documento</p>
+                    </div>
+                     <Button variant="ghost" size="icon" className="shrink-0" asChild>
+                        <a href="#" download={message.fileName}>
+                            <Download className="h-5 w-5" />
+                        </a>
+                    </Button>
+                </div>
               ) : (
                 <p className="text-sm break-words">{message.content}</p>
               )}
 
-              {!isMedia && (
+              {message.type === 'text' && (
                 <div className="flex items-center justify-end gap-2 mt-1">
                   <p className="text-xs opacity-70">
                     {format(new Date(message.timestamp), "HH:mm")}
@@ -101,7 +112,7 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
               )}
             </div>
           </PopoverTrigger>
-          {!isMedia && (<PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
+          {message.type === 'text' && (<PopoverContent side={isYou ? 'left' : 'right'} className="w-auto p-1 rounded-full">
             <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" onClick={() => handleReaction('❤️')}>
                    <Heart className="h-5 w-5 text-muted-foreground hover:text-red-500 hover:fill-current" />
@@ -116,7 +127,7 @@ export default function MessageBubble({ message, chatType }: MessageBubbleProps)
           </PopoverContent>)}
         </Popover>
 
-        {Object.keys(reactions).length > 0 && !isMedia && (
+        {Object.keys(reactions).length > 0 && message.type === 'text' && (
              <div className="absolute -bottom-3 right-1 flex items-center gap-1 rounded-full bg-background border px-1.5 py-0.5 shadow-sm text-xs">
                  {Object.entries(reactions).map(([emoji, count]) => (
                     <span key={emoji} className="flex items-center gap-0.5">

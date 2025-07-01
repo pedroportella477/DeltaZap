@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getChatData, Message as MessageType, users } from "@/lib/data";
-import { ArrowLeft, MoreVertical, Send, Smile } from "lucide-react";
+import { ArrowLeft, MoreVertical, Send, Smile, Paperclip, ImageIcon, FileText } from "lucide-react";
 import MessageBubble from "@/components/message-bubble";
 import SmartReplySuggestions from "@/components/smart-reply-suggestions";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +58,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
   const [newMessage, setNewMessage] = useState("");
   const { toast } = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [attachmentPopoverOpen, setAttachmentPopoverOpen] = useState(false);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +85,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
 
     const currentUser = users.find((u) => u.id === "user1");
 
-    const msg: ChatData['messages'][0] = {
+    const msg: MessageType = {
       id: `msg${Date.now()}`,
       chatId,
       senderId: "user1",
@@ -93,6 +94,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       timestamp: new Date().toISOString(),
       read: false,
       reactions: {},
+      type: content ? 'image' : 'text',
     };
 
     setMessages((prevMessages) => [...prevMessages, msg]);
@@ -110,7 +112,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
         (p) => p.id !== "user1"
       );
       if (otherParticipant) {
-        const replyMessage: ChatData["messages"][0] = {
+        const replyMessage: MessageType = {
           id: `msg${Date.now() + 1}`,
           chatId: chatData.id,
           senderId: otherParticipant.id,
@@ -120,6 +122,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
           timestamp: new Date().toISOString(),
           read: false,
           reactions: {},
+          type: 'text',
         };
 
         setMessages((prev) => [...prev, replyMessage]);
@@ -137,6 +140,42 @@ export function ChatDetail({ chatId }: { chatId: string }) {
         });
       }
     }, 2000);
+  };
+  
+  const handleSendFile = (type: 'image' | 'document') => {
+    if (!chatData) return;
+    const currentUser = users.find((u) => u.id === 'user1');
+    let msg: MessageType;
+
+    if (type === 'image') {
+      msg = {
+        id: `msg${Date.now()}`,
+        chatId,
+        senderId: 'user1',
+        sender: currentUser!,
+        content: `https://placehold.co/300x200.png?t=${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        reactions: {},
+        type: 'image',
+        fileName: 'imagem-anexada.png',
+      };
+    } else {
+      msg = {
+        id: `msg${Date.now()}`,
+        chatId,
+        senderId: 'user1',
+        sender: currentUser!,
+        content: 'document_placeholder',
+        timestamp: new Date().toISOString(),
+        read: false,
+        reactions: {},
+        type: 'document',
+        fileName: 'proposta-comercial.pdf',
+      };
+    }
+    setMessages((prev) => [...prev, msg]);
+    setAttachmentPopoverOpen(false);
   };
   
   const onEmojiClick = (emojiData: EmojiClickData) => {
@@ -250,6 +289,25 @@ export function ChatDetail({ chatId }: { chatId: string }) {
                     </Tabs>
                 </PopoverContent>
             </Popover>
+
+            <Popover open={attachmentPopoverOpen} onOpenChange={setAttachmentPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <Paperclip />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-1 mb-2">
+                    <div className="flex flex-col gap-1">
+                        <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => handleSendFile('image')}>
+                            <ImageIcon /> Imagem/Vídeo
+                        </Button>
+                        <Button variant="ghost" className="justify-start gap-2 px-2" onClick={() => handleSendFile('document')}>
+                            <FileText /> Documento
+                        </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
+
           <Input
             placeholder="Digite uma mensagem"
             value={newMessage}
