@@ -30,6 +30,7 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [hasShownToast, setHasShownToast] = useState(false);
   const { toast } = useToast();
   const { userId } = useXmpp();
   
@@ -50,6 +51,32 @@ export default function AppointmentsPage() {
   useEffect(() => {
     refreshAppointments();
   }, [refreshAppointments]);
+  
+  useEffect(() => {
+    if (!appointments.length || hasShownToast) return;
+
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todaysAppointments = appointments.filter(a => a.date === todayStr);
+
+    if (todaysAppointments.length > 0) {
+      toast({
+        title: "🔔 Lembrete de Compromissos!",
+        description: (
+          <div className="w-full mt-2">
+            <p className="font-semibold">Você tem os seguintes compromissos hoje:</p>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              {todaysAppointments.map(appt => (
+                <li key={appt.id}>{appt.title}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+        duration: 10000,
+      });
+      setHasShownToast(true);
+    }
+  }, [appointments, hasShownToast, toast]);
+
 
   const onSubmit = async (data: AppointmentForm) => {
     if (!userId || !selectedDate) {
