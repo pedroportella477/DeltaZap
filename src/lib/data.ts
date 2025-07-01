@@ -42,6 +42,14 @@ export type Status = {
   type: 'text' | 'image';
 };
 
+export type Note = {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  timestamp: string;
+};
+
 export const users: User[] = [
   { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
   { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
@@ -97,6 +105,72 @@ export const statuses: Status[] = [
     { id: 'status2', userId: 'user3', content: 'https://placehold.co/300x500.png', timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(), type: 'image' },
     { id: 'status3', userId: 'user4', content: 'Novo recorde pessoal! #fitness', timestamp: new Date(now.getTime() - 8 * 60 * 60000).toISOString(), type: 'text' },
 ];
+
+const noteColors = [
+  'bg-yellow-200/50 dark:bg-yellow-800/30 border-yellow-400/50',
+  'bg-blue-200/50 dark:bg-blue-800/30 border-blue-400/50',
+  'bg-green-200/50 dark:bg-green-800/30 border-green-400/50',
+  'bg-pink-200/50 dark:bg-pink-800/30 border-pink-400/50',
+  'bg-purple-200/50 dark:bg-purple-800/30 border-purple-400/50',
+];
+
+export let notes: Note[] = [
+  { 
+    id: `note${Date.now() - 1000}`,
+    title: 'Ideias para o projeto',
+    content: '1. Autenticação\n2. Perfil de usuário\n3. Anexo de arquivos',
+    color: noteColors[0],
+    timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(),
+  },
+  { 
+    id: `note${Date.now() - 2000}`,
+    title: 'Lista de compras',
+    content: '- Leite\n- Pão\n- Ovos',
+    color: noteColors[1],
+    timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(),
+  }
+];
+
+const MAX_NOTES = 200;
+
+export function getNotes() {
+  return notes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export function addNote(title: string, content: string) {
+  if (notes.length >= MAX_NOTES) {
+    throw new Error(`Não é possível adicionar mais de ${MAX_NOTES} notas.`);
+  }
+  const newNote: Note = {
+    id: `note${Date.now()}`,
+    title,
+    content,
+    color: noteColors[Math.floor(Math.random() * noteColors.length)],
+    timestamp: new Date().toISOString(),
+  };
+  notes.unshift(newNote);
+  return newNote;
+}
+
+export function updateNote(id: string, title: string, content: string) {
+  const noteIndex = notes.findIndex(n => n.id === id);
+  if (noteIndex > -1) {
+    notes[noteIndex].title = title;
+    notes[noteIndex].content = content;
+    notes[noteIndex].timestamp = new Date().toISOString();
+    return notes[noteIndex];
+  }
+  return null;
+}
+
+export function deleteNote(id: string) {
+  const noteIndex = notes.findIndex(n => n.id === id);
+  if (noteIndex > -1) {
+    notes.splice(noteIndex, 1);
+    return true;
+  }
+  return false;
+}
 
 export function getChatData(chatId: string) {
     const chat = chats.find(c => c.id === chatId);

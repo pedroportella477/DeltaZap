@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
-import { MessageSquare, User, Settings, Star, Circle, MinusCircle, Coffee, Utensils } from "lucide-react";
+import { MessageSquare, User, Settings, Star, Circle, MinusCircle, Coffee, Utensils, StickyNote } from "lucide-react";
 import { users, updateUserPresence, UserPresence } from "@/lib/data";
 import {
   DropdownMenu,
@@ -93,6 +93,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   <SidebarMenuButton isActive={pathname.startsWith('/status')} tooltip="Status">
                     <Star />
                     <span>Status</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/notes">
+                  <SidebarMenuButton isActive={pathname.startsWith('/notes')} tooltip="Minhas Anotações">
+                    <StickyNote />
+                    <span>Anotações</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
