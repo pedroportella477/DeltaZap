@@ -8,12 +8,20 @@ import Cookies from 'js-cookie';
 
 type XmppStatus = 'disconnected' | 'connecting' | 'online' | 'error' | 'restoring';
 
+export interface RosterItem {
+  jid: string;
+  name?: string;
+  subscription: 'both' | 'to' | 'from' | 'none' | 'remove';
+  groups: string[];
+}
+
 interface XmppContextType {
   client: XmppClient | null;
   status: XmppStatus;
   jid: string | null;
   userId: string | null;
   error: string | null;
+  roster: RosterItem[];
   connect: (jid: string, password: string) => Promise<void>;
   disconnect: () => Promise<void>;
 }
@@ -26,6 +34,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [jid, setJid] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [roster, setRoster] = useState<RosterItem[]>([]);
 
   const connect = useCallback(async (jidStr: string, passwordStr: string) => {
     // If a client instance exists, stop it before creating a new one.
@@ -35,6 +44,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     setStatus('connecting');
     setError(null);
+    setRoster([]);
 
     try {
       const serverIp = typeof window !== 'undefined' ? localStorage.getItem('xmpp_server_ip') : 'localhost';
@@ -64,6 +74,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         Cookies.remove('auth-userId');
         setJid(null);
         setUserId(null);
+        setRoster([]);
         setXmppClient(null);
       }
 
@@ -83,6 +94,18 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       newClient.on('online', async (address) => {
         console.log('Online as', address.toString());
         await newClient.send(xml('presence'));
+        
+        // Fetch the roster
+        const rosterStanza = await newClient.iqCaller.request(
+          xml('iq', { type: 'get' }, xml('query', { xmlns: 'jabber:iq:roster' }))
+        );
+        const items = rosterStanza.getChild('query')?.getChildren('item').map(item => ({
+          jid: item.getAttr('jid'),
+          name: item.getAttr('name'),
+          subscription: item.getAttr('subscription'),
+          groups: item.getChildren('group').map(g => g.getText()),
+        })) || [];
+        setRoster(items as RosterItem[]);
         
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('xmpp_jid', jidStr);
@@ -131,7 +154,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []); // Run only once on mount
 
   return (
-    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect }}>
+    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect, roster }}>
       {status === 'restoring' ? (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
           <p>Restaurando sessão...</p>
