@@ -12,6 +12,7 @@ interface XmppContextType {
   client: XmppClient | null;
   status: XmppStatus;
   jid: string | null;
+  userId: string | null;
   error: string | null;
   connect: (jid: string, password: string) => Promise<void>;
   disconnect: () => Promise<void>;
@@ -23,6 +24,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [xmppClient, setXmppClient] = useState<XmppClient | null>(null);
   const [status, setStatus] = useState<XmppStatus>('disconnected');
   const [jid, setJid] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const connect = useCallback(async (jidStr: string, passwordStr: string) => {
@@ -57,7 +59,9 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       newClient.on('offline', () => {
         setStatus('disconnected');
         setJid(null);
+        setUserId(null);
         Cookies.remove('auth-jid');
+        Cookies.remove('auth-userId');
       });
 
       newClient.on('online', async (address) => {
@@ -65,7 +69,9 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await newClient.send(xml('presence'));
         setStatus('online');
         setJid(address.toString());
+        setUserId(address.bare().toString());
         Cookies.set('auth-jid', address.toString(), { expires: 1 });
+        Cookies.set('auth-userId', address.bare().toString(), { expires: 1 });
       });
 
       await newClient.start();
@@ -86,13 +92,14 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setXmppClient(null);
         setStatus('disconnected');
         setJid(null);
+        setUserId(null);
       }
     }
   }, [xmppClient]);
   
 
   return (
-    <XmppContext.Provider value={{ client: xmppClient, status, jid, error, connect, disconnect }}>
+    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect }}>
       {children}
     </XmppContext.Provider>
   );

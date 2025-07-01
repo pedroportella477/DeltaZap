@@ -1,4 +1,18 @@
 
+import { db } from './firebase';
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  where,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp
+} from 'firebase/firestore';
+
 export type UserPresence = 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
 
 export type User = {
@@ -51,10 +65,11 @@ export type Status = {
 
 export type Note = {
   id:string;
+  userId: string;
   title: string;
   content: string;
   color: string;
-  timestamp: string;
+  timestamp: any; // Firestore Timestamp
 };
 
 export type SharedLink = {
@@ -141,23 +156,6 @@ const noteColors = [
   'bg-purple-200/50 dark:bg-purple-800/30 border-purple-400/50',
 ];
 
-export let notes: Note[] = [
-  { 
-    id: `note${Date.now() - 1000}`,
-    title: 'Ideias para o projeto',
-    content: '1. Autenticação\n2. Perfil de usuário\n3. Anexo de arquivos',
-    color: noteColors[0],
-    timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(),
-  },
-  { 
-    id: `note${Date.now() - 2000}`,
-    title: 'Lista de compras',
-    content: '- Leite\n- Pão\n- Ovos',
-    color: noteColors[1],
-    timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(),
-  }
-];
-
 export let supportMaterials: SupportMaterial[] = [
   {
     id: `support${Date.now()}`,
@@ -169,43 +167,49 @@ export let supportMaterials: SupportMaterial[] = [
 
 const MAX_NOTES = 200;
 
-export function getNotes() {
-  return notes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+export async function getNotes(userId: string): Promise<Note[]> {
+  if (!userId) return [];
+  const notesCol = collection(db, 'notes');
+  const q = query(notesCol, where('userId', '==', userId), orderBy('timestamp', 'desc'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
 }
 
-export function addNote(title: string, content: string) {
-  if (notes.length >= MAX_NOTES) {
+export async function addNote(userId: string, title: string, content: string): Promise<Note> {
+  if (!userId) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const notesCollection = collection(db, 'notes');
+  const userNotesQuery = query(notesCollection, where('userId', '==', userId));
+  const userNotesSnapshot = await getDocs(userNotesQuery);
+  if (userNotesSnapshot.size >= MAX_NOTES) {
     throw new Error(`Não é possível adicionar mais de ${MAX_NOTES} notas.`);
   }
-  const newNote: Note = {
-    id: `note${Date.now()}`,
+
+  const newNoteData = {
+    userId,
     title,
     content,
     color: noteColors[Math.floor(Math.random() * noteColors.length)],
-    timestamp: new Date().toISOString(),
+    timestamp: serverTimestamp(),
   };
-  notes.unshift(newNote);
-  return newNote;
+  const docRef = await addDoc(notesCollection, newNoteData);
+  // Return a client-side representation
+  return { id: docRef.id, ...newNoteData, timestamp: new Date() };
 }
 
-export function updateNote(id: string, title: string, content: string) {
-  const noteIndex = notes.findIndex(n => n.id === id);
-  if (noteIndex > -1) {
-    notes[noteIndex].title = title;
-    notes[noteIndex].content = content;
-    notes[noteIndex].timestamp = new Date().toISOString();
-    return notes[noteIndex];
-  }
-  return null;
+export async function updateNote(noteId: string, title: string, content: string): Promise<void> {
+  const noteRef = doc(db, 'notes', noteId);
+  await updateDoc(noteRef, {
+    title,
+    content,
+    timestamp: serverTimestamp()
+  });
 }
 
-export function deleteNote(id: string) {
-  const noteIndex = notes.findIndex(n => n.id === id);
-  if (noteIndex > -1) {
-    notes.splice(noteIndex, 1);
-    return true;
-  }
-  return false;
+export async function deleteNote(noteId: string): Promise<void> {
+  await deleteDoc(doc(db, 'notes', noteId));
 }
 
 export function getChatData(chatId: string) {

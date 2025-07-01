@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Plus, MoreVertical, Edit, Trash2 } from "lucide-react";
@@ -19,6 +20,7 @@ import { getNotes, addNote, updateNote, deleteNote, Note } from "@/lib/data";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useXmpp } from "@/context/xmpp-context";
 
 const noteSchema = z.object({
   title: z.string().min(1, "O título é obrigatório").max(50, "O título não pode ter mais de 50 caracteres."),
@@ -33,19 +35,28 @@ export default function NotesPage() {
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const { toast } = useToast();
+  const { userId } = useXmpp();
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<NoteForm>({
     resolver: zodResolver(noteSchema),
   });
 
-  useEffect(() => {
-    setNotes(getNotes());
-    setIsMounted(true);
-  }, []);
+  const refreshNotes = useCallback(async () => {
+    if (userId) {
+      try {
+        const userNotes = await getNotes(userId);
+        setNotes(userNotes);
+      } catch (error) {
+        console.error("Failed to fetch notes:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar as anotações.' });
+      }
+    }
+  }, [userId, toast]);
 
-  const refreshNotes = () => {
-    setNotes(getNotes());
-  };
+  useEffect(() => {
+    refreshNotes();
+    setIsMounted(true);
+  }, [refreshNotes]);
 
   const handleOpenDialog = (note: Note | null = null) => {
     setEditingNote(note);
@@ -58,26 +69,34 @@ export default function NotesPage() {
     setIsNoteDialogOpen(true);
   };
 
-  const onSubmit = (data: NoteForm) => {
+  const onSubmit = async (data: NoteForm) => {
+    if (!userId) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Você precisa estar logado.' });
+      return;
+    }
     try {
       if (editingNote) {
-        updateNote(editingNote.id, data.title, data.content);
+        await updateNote(editingNote.id, data.title, data.content);
         toast({ title: "Anotação atualizada!" });
       } else {
-        addNote(data.title, data.content);
+        await addNote(userId, data.title, data.content);
         toast({ title: "Anotação criada!" });
       }
-      refreshNotes();
+      await refreshNotes();
       setIsNoteDialogOpen(false);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Erro', description: error.message });
     }
   };
   
-  const handleDeleteNote = (noteId: string) => {
-      deleteNote(noteId);
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteNote(noteId);
       toast({ title: "Anotação excluída!" });
-      refreshNotes();
+      await refreshNotes();
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Erro', description: "Não foi possível remover a anotação." });
+    }
   };
 
 
@@ -138,7 +157,7 @@ export default function NotesPage() {
                   <p className="text-sm whitespace-pre-wrap break-words">{note.content}</p>
                 </CardContent>
                 <CardFooter className="text-xs text-muted-foreground pt-4 justify-end">
-                    {isMounted ? formatDistanceToNow(new Date(note.timestamp), { locale: ptBR, addSuffix: true }) : '...'}
+                    {isMounted && note.timestamp ? formatDistanceToNow(note.timestamp.toDate(), { locale: ptBR, addSuffix: true }) : '...'}
                 </CardFooter>
               </Card>
             ))}
