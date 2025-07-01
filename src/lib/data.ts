@@ -53,7 +53,7 @@ export type Message = {
 
 export type Chat = {
   id:string;
-  type: "individual"; // Removed "group" as it's not implemented
+  type: "individual";
   name?: string;
   avatar?: string;
   participants: Participant[];
@@ -76,6 +76,14 @@ export type Note = {
   title: string;
   content: string;
   color: string;
+  timestamp: any; // Firestore Timestamp
+};
+
+export type Appointment = {
+  id: string;
+  userId: string;
+  date: string; // YYYY-MM-DD format
+  title: string;
   timestamp: any; // Firestore Timestamp
 };
 
@@ -139,7 +147,6 @@ export async function getChats(userId: string): Promise<Chat[]> {
   const chats = await Promise.all(querySnapshot.docs.map(async (doc) => {
     const chatData = doc.data() as Omit<Chat, 'id' | 'messages'>;
     const messagesCol = collection(db, 'users', userId, 'chats', doc.id, 'messages');
-    // Load last 50 messages for performance. Could be paginated later.
     const messagesQuery = query(messagesCol, orderBy('timestamp', 'desc'), limit(50));
     const messagesSnapshot = await getDocs(messagesQuery);
     const messages = messagesSnapshot.docs.map(msgDoc => ({ id: msgDoc.id, ...msgDoc.data() } as Message)).reverse();
@@ -157,17 +164,11 @@ export async function getChats(userId: string): Promise<Chat[]> {
 export async function addMessage(userId: string, message: Omit<Message, 'id'>) {
     const { chatId } = message;
     
-    // Path to the chat document for this user
     const chatRef = doc(db, 'users', userId, 'chats', chatId);
-
-    // Path to the messages subcollection for this chat
     const messagesCol = collection(chatRef, 'messages');
 
-    // Add the message to the subcollection
     await addDoc(messagesCol, message);
 
-    // Update the `lastUpdated` timestamp on the chat document
-    // This also creates the chat document if it doesn't exist
     await setDoc(chatRef, { 
         id: chatId, 
         lastUpdated: message.timestamp 
@@ -219,9 +220,36 @@ export async function deleteNote(noteId: string): Promise<void> {
   await deleteDoc(doc(db, 'notes', noteId));
 }
 
-// Mock function for adding a reaction, since this is not implemented in the XMPP context yet
+// Mock function for adding a reaction
 export function addReaction(chatId: string, messageId: string, emoji: string) {
   console.log(`Reacted with ${emoji} to message ${messageId} in chat ${chatId}`);
+}
+
+// --- Appointments Functions ---
+export async function getAppointments(userId: string): Promise<Appointment[]> {
+  if (!userId) return [];
+  const appointmentsCol = collection(db, 'appointments');
+  const q = query(appointmentsCol, where('userId', '==', userId), orderBy('date', 'asc'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+}
+
+export async function addAppointment(userId: string, date: string, title: string): Promise<Appointment> {
+  if (!userId) throw new Error("Usuário não autenticado.");
+  
+  const newAppointmentData = {
+    userId,
+    date, // YYYY-MM-DD
+    title,
+    timestamp: serverTimestamp(),
+  };
+  const docRef = await addDoc(collection(db, 'appointments'), newAppointmentData);
+  const docSnap = await getDoc(docRef);
+  return { id: docSnap.id, ...docSnap.data() } as Appointment;
+}
+
+export async function deleteAppointment(appointmentId: string): Promise<void> {
+  await deleteDoc(doc(db, 'appointments', appointmentId));
 }
 
 

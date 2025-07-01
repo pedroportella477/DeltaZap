@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
-import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle } from "lucide-react";
+import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays } from "lucide-react";
 import { users } from "@/lib/data";
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ import {
 } from "./ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { useXmpp } from "@/context/xmpp-context";
+import { Clock } from "./clock";
 
 const Logo = () => (
     <div className="flex items-center gap-2" data-ai-hint="logo chat">
@@ -118,6 +119,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
+               <SidebarMenuItem>
+                <Link href="/appointments">
+                  <SidebarMenuButton isActive={pathname.startsWith('/appointments')} tooltip="Meus Compromissos">
+                    <CalendarDays />
+                    <span>Compromissos</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <Link href="/links">
                   <SidebarMenuButton isActive={pathname.startsWith('/links')} tooltip="Links Internos">
@@ -181,8 +190,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <div className="flex-grow overflow-auto">
               {children}
             </div>
-            <footer className="text-center py-2 px-4 text-xs text-muted-foreground border-t bg-background">
-                © {new Date().getFullYear()} - Desenvolvido por Pedro Portella Dev
+            <footer className="flex items-center justify-between py-2 px-4 text-xs text-muted-foreground border-t bg-background">
+                <span>© {new Date().getFullYear()} - Desenvolvido por Pedro Portella Dev</span>
+                <Clock />
             </footer>
         </SidebarInset>
       </div>
