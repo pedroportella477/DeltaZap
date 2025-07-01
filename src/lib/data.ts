@@ -10,7 +10,8 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  getDoc
 } from 'firebase/firestore';
 
 export type UserPresence = 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
@@ -88,14 +89,14 @@ export type SupportMaterial = {
   imageUrl?: string;
   documentUrl?: string;
   documentName?: string;
-  timestamp: string;
+  timestamp: any;
 };
 
 export type InternalLink = {
   id: string;
   title: string;
   url: string;
-  timestamp: string;
+  timestamp: any;
 };
 
 export const users: User[] = [
@@ -163,30 +164,6 @@ const noteColors = [
   'bg-purple-200/50 dark:bg-purple-800/30 border-purple-400/50',
 ];
 
-export let supportMaterials: SupportMaterial[] = [
-  {
-    id: `support${Date.now()}`,
-    title: 'Como conectar ao servidor XMPP',
-    content: 'Certifique-se de que o servidor Openfire está em execução. Use seu JID completo (usuario@servidor) e senha para fazer login. O endereço do servidor websocket é configurado para ws://localhost:7070/ws-xmpp por padrão.',
-    timestamp: new Date().toISOString(),
-  }
-];
-
-export let internalLinks: InternalLink[] = [
-    {
-        id: `intlink1`,
-        title: 'Portal de Colaboradores',
-        url: 'https://intranet.empresa.com',
-        timestamp: new Date().toISOString(),
-    },
-    {
-        id: `intlink2`,
-        title: 'Sistema de Ponto Eletrônico',
-        url: 'https://ponto.empresa.com',
-        timestamp: new Date().toISOString(),
-    }
-];
-
 const MAX_NOTES = 200;
 
 export async function getNotes(userId: string): Promise<Note[]> {
@@ -217,8 +194,8 @@ export async function addNote(userId: string, title: string, content: string): P
     timestamp: serverTimestamp(),
   };
   const docRef = await addDoc(notesCollection, newNoteData);
-  // Return a client-side representation
-  return { id: docRef.id, ...newNoteData, timestamp: new Date() };
+  const docSnap = await getDoc(docRef);
+  return { id: docSnap.id, ...docSnap.data() } as Note;
 }
 
 export async function updateNote(noteId: string, title: string, content: string): Promise<void> {
@@ -394,58 +371,54 @@ export function deleteMessage(chatId: string, messageId: string) {
   return false;
 }
 
-export function getSupportMaterials() {
-  return supportMaterials.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+// --- Firestore Functions for Admin Panel ---
+
+// Support Materials
+export async function getSupportMaterials(): Promise<SupportMaterial[]> {
+  const materialsCol = collection(db, 'supportMaterials');
+  const q = query(materialsCol, orderBy('timestamp', 'desc'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportMaterial));
 }
 
-export function addSupportMaterial(data: Omit<SupportMaterial, 'id' | 'timestamp'>) {
-  const newMaterial: SupportMaterial = {
-    id: `support${Date.now()}`,
+export async function addSupportMaterial(data: Omit<SupportMaterial, 'id' | 'timestamp'>): Promise<SupportMaterial> {
+  const newMaterialData = {
     ...data,
-    timestamp: new Date().toISOString(),
+    timestamp: serverTimestamp(),
   };
-  supportMaterials.unshift(newMaterial);
-  return newMaterial;
+  const docRef = await addDoc(collection(db, 'supportMaterials'), newMaterialData);
+  const docSnap = await getDoc(docRef);
+  return { id: docSnap.id, ...docSnap.data() } as SupportMaterial;
 }
 
-export function deleteSupportMaterial(id: string) {
-  const index = supportMaterials.findIndex(m => m.id === id);
-  if (index > -1) {
-    supportMaterials.splice(index, 1);
-    return true;
-  }
-  return false;
+export async function deleteSupportMaterial(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'supportMaterials', id));
 }
 
-export function getInternalLinks(): InternalLink[] {
-  return internalLinks.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+// Internal Links
+export async function getInternalLinks(): Promise<InternalLink[]> {
+  const linksCol = collection(db, 'internalLinks');
+  const q = query(linksCol, orderBy('timestamp', 'desc'));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InternalLink));
 }
 
-export function addInternalLink(title: string, url: string) {
-  const newLink: InternalLink = {
-    id: `intlink${Date.now()}`,
+export async function addInternalLink(title: string, url: string): Promise<InternalLink> {
+  const newLinkData = {
     title,
     url,
-    timestamp: new Date().toISOString(),
+    timestamp: serverTimestamp(),
   };
-  internalLinks.unshift(newLink);
-  return newLink;
+  const docRef = await addDoc(collection(db, 'internalLinks'), newLinkData);
+  const docSnap = await getDoc(docRef);
+  return { id: docSnap.id, ...docSnap.data() } as InternalLink;
 }
 
-export function updateInternalLink(id: string, title: string, url: string) {
-    const index = internalLinks.findIndex(l => l.id === id);
-    if (index > -1) {
-        internalLinks[index] = { ...internalLinks[index], title, url };
-        return internalLinks[index];
-    }
-    return null;
+export async function updateInternalLink(id: string, title: string, url: string): Promise<void> {
+  const linkRef = doc(db, 'internalLinks', id);
+  await updateDoc(linkRef, { title, url });
 }
 
-export function deleteInternalLink(id: string) {
-    const index = internalLinks.findIndex(l => l.id === id);
-    if (index > -1) {
-        internalLinks.splice(index, 1);
-        return true;
-    }
-    return false;
+export async function deleteInternalLink(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'internalLinks', id));
 }

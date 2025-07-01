@@ -4,15 +4,26 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getInternalLinks, InternalLink } from '@/lib/data';
-import { Link as LinkIcon, ExternalLink } from "lucide-react";
+import { Link as LinkIcon, ExternalLink, Loader2 } from "lucide-react";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function LinksPage() {
   const [links, setLinks] = useState<InternalLink[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setLinks(getInternalLinks());
+    const fetchLinks = async () => {
+      try {
+        const fetchedLinks = await getInternalLinks();
+        setLinks(fetchedLinks);
+      } catch (error) {
+        console.error("Failed to fetch internal links:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLinks();
   }, []);
 
   return (
@@ -22,7 +33,12 @@ export default function LinksPage() {
         <CardDescription>Links úteis e importantes definidos pela administração.</CardDescription>
       </CardHeader>
       <CardContent className="p-4 flex-grow overflow-y-auto bg-muted/20">
-        {links.length === 0 ? (
+        {isLoading ? (
+           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+            <Loader2 className="h-20 w-20 text-muted-foreground/30 animate-spin" />
+            <p className="mt-6 text-xl font-semibold font-headline">Carregando links...</p>
+          </div>
+        ) : links.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <LinkIcon className="h-20 w-20 text-muted-foreground/30" />
             <h2 className="mt-6 text-xl font-semibold font-headline">Nenhum link disponível</h2>

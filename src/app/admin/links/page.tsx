@@ -9,8 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getInternalLinks, addInternalLink, updateInternalLink, deleteInternalLink, InternalLink } from '@/lib/data';
-import { PlusCircle, Trash2, Edit, ExternalLink, Link as LinkIcon, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { PlusCircle, Trash2, Edit, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -27,18 +27,27 @@ export default function AdminLinksPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<InternalLink | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const { toast } = useToast();
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<LinkForm>({
     resolver: zodResolver(linkSchema),
   });
 
-  const refreshLinks = () => {
-    setLinks(getInternalLinks());
+  const refreshLinks = async () => {
+    setIsFetching(true);
+    try {
+        const fetchedLinks = await getInternalLinks();
+        setLinks(fetchedLinks);
+    } catch (error) {
+        toast({ title: "Erro ao carregar links", variant: "destructive" });
+    } finally {
+        setIsFetching(false);
+    }
   };
 
   useEffect(() => {
     refreshLinks();
-  }, []);
+  }, [toast]);
 
   const handleOpenDialog = (link: InternalLink | null = null) => {
     setEditingLink(link);
@@ -51,17 +60,17 @@ export default function AdminLinksPage() {
     setIsDialogOpen(true);
   };
 
-  const onSubmit = (data: LinkForm) => {
+  const onSubmit = async (data: LinkForm) => {
     setIsLoading(true);
     try {
       if (editingLink) {
-        updateInternalLink(editingLink.id, data.title, data.url);
+        await updateInternalLink(editingLink.id, data.title, data.url);
         toast({ title: "Link atualizado!" });
       } else {
-        addInternalLink(data.title, data.url);
+        await addInternalLink(data.title, data.url);
         toast({ title: "Link adicionado!" });
       }
-      refreshLinks();
+      await refreshLinks();
       setIsDialogOpen(false);
     } catch (error) {
       toast({ title: "Ocorreu um erro", variant: "destructive" });
@@ -70,10 +79,14 @@ export default function AdminLinksPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    deleteInternalLink(id);
-    toast({ title: 'Link removido!', variant: 'destructive' });
-    refreshLinks();
+  const handleDelete = async (id: string) => {
+    try {
+        await deleteInternalLink(id);
+        toast({ title: 'Link removido!', variant: 'destructive' });
+        await refreshLinks();
+    } catch (error) {
+        toast({ title: "Erro ao remover link", variant: "destructive" });
+    }
   };
 
   return (
@@ -92,7 +105,11 @@ export default function AdminLinksPage() {
           <CardDescription>Adicione, edite ou remova os links que aparecerão para os usuários.</CardDescription>
         </CardHeader>
         <CardContent>
-          {links.length === 0 ? (
+          {isFetching ? (
+            <div className='flex justify-center items-center py-4'>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : links.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">Nenhum link cadastrado.</p>
           ) : (
             <div className="space-y-3">

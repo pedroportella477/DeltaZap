@@ -10,8 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { getSupportMaterials, addSupportMaterial, deleteSupportMaterial, SupportMaterial } from '@/lib/data';
-import { PlusCircle, Trash2, FileText, ImageIcon, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { PlusCircle, Trash2, FileText, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,18 +39,27 @@ export default function AdminSupportPage() {
   const [materials, setMaterials] = useState<SupportMaterial[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const { toast } = useToast();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<SupportForm>({
     resolver: zodResolver(supportSchema),
   });
 
-  const refreshMaterials = () => {
-    setMaterials(getSupportMaterials());
+  const refreshMaterials = async () => {
+    setIsFetching(true);
+    try {
+      const fetchedMaterials = await getSupportMaterials();
+      setMaterials(fetchedMaterials);
+    } catch (error) {
+      toast({ title: "Erro ao carregar materiais", variant: "destructive" });
+    } finally {
+        setIsFetching(false);
+    }
   };
 
   useEffect(() => {
     refreshMaterials();
-  }, []);
+  }, [toast]);
 
   const onSubmit = async (data: SupportForm) => {
     setIsLoading(true);
@@ -68,7 +77,7 @@ export default function AdminSupportPage() {
         documentName = docFile.name;
       }
 
-      addSupportMaterial({
+      await addSupportMaterial({
         title: data.title,
         content: data.content,
         imageUrl,
@@ -77,7 +86,7 @@ export default function AdminSupportPage() {
       });
       
       toast({ title: "Material adicionado!" });
-      refreshMaterials();
+      await refreshMaterials();
       setIsDialogOpen(false);
       reset();
     } catch (error) {
@@ -88,10 +97,14 @@ export default function AdminSupportPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    deleteSupportMaterial(id);
-    toast({ title: 'Material removido!', variant: 'destructive' });
-    refreshMaterials();
+  const handleDelete = async (id: string) => {
+    try {
+        await deleteSupportMaterial(id);
+        toast({ title: 'Material removido!', variant: 'destructive' });
+        await refreshMaterials();
+    } catch (error) {
+         toast({ title: 'Erro ao remover material', variant: 'destructive' });
+    }
   };
 
   return (
@@ -150,7 +163,11 @@ export default function AdminSupportPage() {
           <CardDescription>Lista de todos os materiais de apoio disponíveis.</CardDescription>
         </CardHeader>
         <CardContent>
-          {materials.length === 0 ? (
+           {isFetching ? (
+             <div className='flex justify-center items-center py-4'>
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+             </div>
+           ) : materials.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">Nenhum material de apoio cadastrado.</p>
           ) : (
             <div className="space-y-4">
