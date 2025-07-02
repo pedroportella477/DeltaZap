@@ -3,7 +3,7 @@ module.exports = {
   apps: [
     {
       name: 'deltazap',
-      script: 'server.js', // Aponta diretamente para o seu arquivo de servidor
+      script: './.next/standalone/server.js',
       instances: 1,
       autorestart: true,
       watch: false,
