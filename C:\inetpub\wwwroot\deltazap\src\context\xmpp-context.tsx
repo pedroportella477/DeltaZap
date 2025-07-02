@@ -264,7 +264,13 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (e: any) {
       console.error(e);
       setStatus('error');
-      setError(e.message || 'Ocorreu um erro inesperado durante a conexão.');
+      let userFriendlyError = 'Ocorreu um erro inesperado durante a conexão.';
+      if (e.message && (e.message.includes('ECONNREFUSED') || e.message.includes('ECONNERROR'))) {
+          userFriendlyError = `Conexão recusada pelo servidor. Verifique se o endereço e a porta estão corretos no Painel de Administração e se o servidor XMPP (Openfire) está em execução.`;
+      } else {
+          userFriendlyError = e.message;
+      }
+      setError(userFriendlyError);
     }
   }, [xmppClient, handleStanza]);
 
