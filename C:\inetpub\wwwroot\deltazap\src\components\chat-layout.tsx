@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import Cookies from "js-cookie";
 import {
   SidebarProvider,
   Sidebar,
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
-import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays } from "lucide-react";
+import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays, BookOpen } from "lucide-react";
 import { users } from "@/lib/data";
 import {
   DropdownMenu,
@@ -122,6 +123,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   <SidebarMenuButton isActive={pathname.startsWith('/appointments')} tooltip="Meus Compromissos">
                     <CalendarDays />
                     <span>Compromissos</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/support">
+                  <SidebarMenuButton isActive={pathname.startsWith('/support')} tooltip="Material de Apoio">
+                    <BookOpen />
+                    <span>Material de Apoio</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
