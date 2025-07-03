@@ -9,7 +9,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar as CalendarIcon, Plus, Trash2 } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
@@ -53,7 +53,7 @@ export default function AppointmentsPage() {
   }, [refreshAppointments]);
   
   useEffect(() => {
-    if (!appointments.length || hasShownToast) return;
+    if (!appointments.length || hasShownToast || !userId) return;
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const todaysAppointments = appointments.filter(a => a.date === todayStr);
@@ -75,7 +75,7 @@ export default function AppointmentsPage() {
       });
       setHasShownToast(true);
     }
-  }, [appointments, hasShownToast, toast]);
+  }, [appointments, hasShownToast, toast, userId]);
 
 
   const onSubmit = async (data: AppointmentForm) => {
