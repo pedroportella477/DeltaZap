@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Cookies from 'js-cookie';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,10 @@ import { Loader2 } from 'lucide-react';
 import { useXmpp } from '@/context/xmpp-context';
 
 const loginSchema = z.object({
-  jid: z.string().email("Por favor, insira um JID válido (ex: usuario@servidor.com)"),
+  jid: z.string().min(1, "O campo de usuário é obrigatório").refine(
+    (value) => value.toLowerCase() === 'master' || value.includes('@'),
+    { message: "Por favor, insira um JID válido ou 'master'." }
+  ),
   password: z.string().min(1, "A senha é obrigatória"),
 });
 
@@ -39,10 +42,14 @@ const Logo = () => (
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { connect, status, error } = useXmpp();
+  const { connect, loginAsMaster, status, error } = useXmpp();
   const [isLoading, setIsLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+        jid: '',
+        password: '',
+    }
   });
 
   useEffect(() => {
@@ -58,7 +65,11 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
-    await connect(data.jid, data.password);
+    if (data.jid.toLowerCase() === 'master' && data.password === '@Delta477') {
+        await loginAsMaster();
+    } else {
+        await connect(data.jid, data.password);
+    }
   };
 
   return (
@@ -77,7 +88,7 @@ export default function LoginPage() {
               <Label htmlFor="jid">Usuário (JID)</Label>
               <Input
                 id="jid"
-                placeholder="usuario@servidor.com"
+                placeholder="usuario@servidor.com ou master"
                 {...register('jid')}
                 disabled={isLoading}
               />
