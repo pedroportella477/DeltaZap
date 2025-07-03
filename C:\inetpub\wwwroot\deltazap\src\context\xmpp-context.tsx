@@ -270,29 +270,38 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [xmppClient, handleStanza]);
 
   const loginAsMaster = useCallback(async () => {
+    // A tela de login gerencia seu próprio estado de carregamento.
+    // Esta função definirá apenas o status final da conexão.
+    setError(null);
     try {
         const masterJid = 'master@deltazap.com';
-        setStatus('connecting');
-
         const chatHistory = await getChats(masterJid);
         
         setJid(masterJid);
         setUserId(masterJid);
-        setError(null);
         setRoster([]); 
         setChats(chatHistory);
-        setStatus('online');
-
+        
         Cookies.set('auth-jid', masterJid, { expires: 1, path: '/' });
         Cookies.set('auth-userId', masterJid, { expires: 1, path: '/' });
         if (typeof window !== 'undefined') {
             sessionStorage.setItem('xmpp_jid', masterJid);
-            sessionStorage.setItem('xmpp_password', 'IS_MASTER_USER'); // Special flag
+            sessionStorage.setItem('xmpp_password', 'IS_MASTER_USER');
         }
+
+        setStatus('online');
     } catch (e: any) {
         console.error("Master login failed:", e);
         setStatus('error');
-        setError("Não foi possível carregar os dados do usuário master.");
+        setError("Falha ao entrar como master. Verifique a conexão com o banco de dados.");
+        
+        // Limpeza em caso de falha
+        if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('xmpp_jid');
+            sessionStorage.removeItem('xmpp_password');
+        }
+        Cookies.remove('auth-jid', { path: '/' });
+        Cookies.remove('auth-userId', { path: '/' });
     }
   }, []);
 
