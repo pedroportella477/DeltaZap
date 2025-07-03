@@ -17,7 +17,7 @@ import { Loader2 } from 'lucide-react';
 import { useXmpp } from '@/context/xmpp-context';
 
 const loginSchema = z.object({
-  jid: z.string().email("Por favor, insira um JID válido (ex: usuario@servidor.com)"),
+  jid: z.string().min(1, "O campo de usuário é obrigatório"),
   password: z.string().min(1, "A senha é obrigatória"),
 });
 
@@ -63,9 +63,18 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
-    if (data.jid.toLowerCase() === 'master@deltazap.com' && data.password === '@Delta477') {
+    if (data.jid.toLowerCase() === 'master' && data.password === '@Delta477') {
         await loginAsMaster();
     } else {
+        if (!data.jid.includes('@')) {
+             toast({
+                variant: 'destructive',
+                title: 'JID Inválido',
+                description: 'Por favor, insira um JID válido no formato usuario@servidor.com',
+            });
+            setIsLoading(false);
+            return;
+        }
         await connect(data.jid, data.password);
     }
   };
@@ -86,7 +95,7 @@ export default function LoginPage() {
               <Label htmlFor="jid">Usuário (JID)</Label>
               <Input
                 id="jid"
-                placeholder="usuario@servidor.com"
+                placeholder="usuario@servidor.com ou master"
                 {...register('jid')}
                 disabled={isLoading}
               />
