@@ -19,8 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
-import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays, BookOpen } from "lucide-react";
-import { users } from "@/lib/data";
+import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays, BookOpen, ClipboardCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,9 +63,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     if (userId === 'master@deltazap.com') {
       return { name: 'Master', avatar: 'https://placehold.co/100x100.png' };
     }
-    // For regular users, continue to use the 'Você' profile for display purposes.
-    const defaultUser = users.find((u) => u.id === "user1")!;
-    return { name: defaultUser.name, avatar: defaultUser.avatar };
+    return { name: 'Você', avatar: 'https://placehold.co/100x100.png' };
   }, [userId]);
 
   const handleLogout = async () => {
@@ -107,6 +104,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   <SidebarMenuButton isActive={pathname.startsWith('/chat')} tooltip="Conversas">
                     <MessageSquare />
                     <span>Conversas</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Link href="/demands">
+                  <SidebarMenuButton isActive={pathname.startsWith('/demands')} tooltip="Demandas">
+                    <ClipboardCheck />
+                    <span>Demandas</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>

@@ -113,6 +113,35 @@ export type InternalLink = {
   timestamp: any;
 };
 
+// --- Demandas (Tarefas/Tickets) ---
+export type DemandPriority = 'Baixa' | 'Média' | 'Alta' | 'Urgente';
+export type DemandStatus = 'Pendente' | 'Em andamento' | 'Concluída' | 'Cancelada';
+
+export type Demand = {
+  id: string;
+  title: string;
+  description: string;
+  creatorId: string;
+  creatorName: string;
+  assigneeId: string;
+  assigneeName: string;
+  priority: DemandPriority;
+  dueDate: any; // Firestore Timestamp
+  status: DemandStatus;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
+};
+
+export type DemandComment = {
+  id: string;
+  demandId: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: any; // Firestore Timestamp
+};
+
+
 export const users: User[] = [
   { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
   { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
@@ -303,4 +332,43 @@ export async function updateInternalLink(id: string, title: string, url: string)
 
 export async function deleteInternalLink(id: string): Promise<void> {
   await deleteDoc(doc(db, 'internalLinks', id));
+}
+
+// --- Demand/Task Management Functions ---
+export async function addDemand(demandData: Omit<Demand, 'id' | 'createdAt' | 'updatedAt'>): Promise<Demand> {
+  const dataWithTimestamps = {
+    ...demandData,
+    status: 'Pendente',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const docRef = await addDoc(collection(db, 'demands'), dataWithTimestamps);
+  const docSnap = await getDoc(docRef);
+  return { id: docSnap.id, ...docSnap.data() } as Demand;
+}
+
+export async function getDemandsForUser(userId: string): Promise<{ assignedToMe: Demand[], createdByMe: Demand[] }> {
+  if (!userId) return { assignedToMe: [], createdByMe: [] };
+  const demandsCol = collection(db, 'demands');
+  
+  const assignedQuery = query(demandsCol, where('assigneeId', '==', userId), orderBy('createdAt', 'desc'));
+  const createdQuery = query(demandsCol, where('creatorId', '==', userId), orderBy('createdAt', 'desc'));
+
+  const [assignedSnapshot, createdSnapshot] = await Promise.all([
+    getDocs(assignedQuery),
+    getDocs(createdQuery)
+  ]);
+
+  const assignedToMe = assignedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demand));
+  const createdByMe = createdSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demand));
+
+  return { assignedToMe, createdByMe };
+}
+
+export async function updateDemand(demandId: string, data: Partial<Omit<Demand, 'id'>>): Promise<void> {
+  const demandRef = doc(db, 'demands', demandId);
+  await updateDoc(demandRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
 }
