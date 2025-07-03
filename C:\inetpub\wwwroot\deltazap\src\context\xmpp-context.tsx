@@ -29,6 +29,7 @@ interface XmppContextType {
   roster: RosterItem[];
   chats: Chat[];
   connect: (jid: string, password: string) => Promise<void>;
+  loginAsMaster: () => Promise<void>;
   disconnect: () => Promise<void>;
   sendMessage: (to: string, body: string, type?: 'text' | 'image' | 'document', fileName?: string) => void;
   markChatAsRead: (chatId: string) => void;
@@ -268,6 +269,25 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [xmppClient, handleStanza]);
 
+  const loginAsMaster = useCallback(async () => {
+    const masterJid = 'master@deltazap.com';
+    setStatus('online');
+    setJid(masterJid);
+    setUserId(masterJid);
+    setError(null);
+    setRoster([]); 
+    
+    const chatHistory = await getChats(masterJid);
+    setChats(chatHistory);
+
+    Cookies.set('auth-jid', masterJid, { expires: 1 });
+    Cookies.set('auth-userId', masterJid, { expires: 1 });
+    if (typeof window !== 'undefined') {
+        sessionStorage.setItem('xmpp_jid', masterJid);
+        sessionStorage.setItem('xmpp_password', 'IS_MASTER_USER'); // Special flag
+    }
+  }, []);
+
   const disconnect = useCallback(async () => {
     if (xmppClient) {
       try {
@@ -277,10 +297,20 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error during disconnect:', e);
       }
     }
+    // Also clear master session
+    if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('xmpp_jid');
+        sessionStorage.removeItem('xmpp_password');
+    }
+    Cookies.remove('auth-jid');
+    Cookies.remove('auth-userId');
   }, [xmppClient]);
 
   const sendMessage = useCallback((to: string, body: string, type: Message['type'] = 'text', fileName?: string) => {
-    if (!xmppClient || !userId) return;
+    if (!xmppClient || !userId || jid === 'master@deltazap.com') {
+      console.warn("Master user cannot send messages.");
+      return;
+    };
 
     const messageStanza = xml('message', { to, type: 'chat', id: `msg${Date.now()}` }, 
         xml('body', {}, body),
@@ -333,7 +363,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
     });
-  }, [xmppClient, userId, roster]);
+  }, [xmppClient, userId, roster, jid]);
 
   const markChatAsRead = useCallback((chatId: string) => {
     setActiveChatId(chatId);
@@ -371,8 +401,13 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const savedJid = sessionStorage.getItem('xmpp_jid');
     const savedPassword = sessionStorage.getItem('xmpp_password');
     if (savedJid && savedPassword) {
-      setStatus('restoring');
-      connect(savedJid, savedPassword);
+      if (savedJid === 'master@deltazap.com' && savedPassword === 'IS_MASTER_USER') {
+        setStatus('restoring');
+        loginAsMaster();
+      } else {
+        setStatus('restoring');
+        connect(savedJid, savedPassword);
+      }
     } else {
       setStatus('disconnected');
     }
@@ -380,7 +415,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []); 
 
   return (
-    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, disconnect, roster, chats, sendMessage, markChatAsRead, getChatById, sendPresence, sendUnavailablePresence }}>
+    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, loginAsMaster, disconnect, roster, chats, sendMessage, markChatAsRead, getChatById, sendPresence, sendUnavailablePresence }}>
       {status === 'restoring' ? (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
           <p>Restaurando sessão...</p>
