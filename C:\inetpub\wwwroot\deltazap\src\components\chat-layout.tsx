@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Cookies from "js-cookie";
 import {
   SidebarProvider,
@@ -57,9 +57,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const [currentUser] = useState(users.find((u) => u.id === "user1")!);
-  const { disconnect, jid, sendPresence, sendUnavailablePresence } = useXmpp();
+  const { disconnect, jid, userId, sendPresence, sendUnavailablePresence } = useXmpp();
   const [presence, setPresence] = useState('online');
+
+  const currentUser = useMemo(() => {
+    if (userId === 'master@deltazap.com') {
+      return { name: 'Master', avatar: 'https://placehold.co/100x100.png' };
+    }
+    // For regular users, continue to use the 'Você' profile for display purposes.
+    const defaultUser = users.find((u) => u.id === "user1")!;
+    return { name: defaultUser.name, avatar: defaultUser.avatar };
+  }, [userId]);
 
   const handleLogout = async () => {
     await disconnect();
