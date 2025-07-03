@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "./ui/button";
-import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays, BookOpen, Paintbrush } from "lucide-react";
+import { MessageSquare, User, Star, StickyNote, Link as LinkIcon, LogOut, Coffee, Utensils, MinusCircle, Circle, CalendarDays, BookOpen } from "lucide-react";
 import { users } from "@/lib/data";
 import {
   DropdownMenu,
@@ -131,14 +131,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   <SidebarMenuButton isActive={pathname.startsWith('/appointments')} tooltip="Meus Compromissos">
                     <CalendarDays />
                     <span>Compromissos</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-               <SidebarMenuItem>
-                <Link href="/canvas">
-                  <SidebarMenuButton isActive={pathname.startsWith('/canvas')} tooltip="Quadro Branco">
-                    <Paintbrush />
-                    <span>Quadro Branco</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
