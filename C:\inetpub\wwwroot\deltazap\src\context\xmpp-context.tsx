@@ -171,8 +171,8 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setChats([]);
 
     try {
-      const serverIp = (typeof window !== 'undefined' ? localStorage.getItem('xmpp_server_ip') : null) || 'localhost';
-      const serverPort = (typeof window !== 'undefined' ? localStorage.getItem('xmpp_server_port') : null) || '7070';
+      const serverIp = typeof window !== 'undefined' ? localStorage.getItem('xmpp_server_ip') : 'localhost';
+      const serverPort = typeof window !== 'undefined' ? localStorage.getItem('xmpp_server_port') : '7070';
       const service = `ws://${serverIp}:${serverPort}/ws/`;
 
       const [username, domain] = jidStr.split('@');
@@ -403,3 +403,5 @@ export const useXmpp = (): XmppContextType => {
   }
   return context;
 };
+
+    
