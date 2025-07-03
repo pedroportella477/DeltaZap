@@ -86,9 +86,9 @@ export default function AppointmentsPage() {
     
     try {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const newAppointment = await addAppointment(userId, dateStr, data.title);
-      setAppointments(prev => [...prev, newAppointment].sort((a,b) => a.date.localeCompare(b.date)));
+      await addAppointment(userId, dateStr, data.title);
       toast({ title: "Compromisso adicionado!" });
+      await refreshAppointments();
       setIsDialogOpen(false);
       reset();
     } catch (error: any) {
@@ -99,8 +99,8 @@ export default function AppointmentsPage() {
   const handleDeleteAppointment = async (id: string) => {
     try {
       await deleteAppointment(id);
-      setAppointments(prev => prev.filter(appt => appt.id !== id));
       toast({ title: "Compromisso removido!" });
+      await refreshAppointments();
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível remover o compromisso.' });
     }
