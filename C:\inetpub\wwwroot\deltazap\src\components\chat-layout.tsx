@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -115,6 +116,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 </Link>
               </SidebarMenuItem>
               <SidebarMenuItem>
+                <Link href="/support">
+                  <SidebarMenuButton isActive={pathname.startsWith('/support')} tooltip="Material de Apoio">
+                    <BookOpen />
+                    <span>Material de Apoio</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <Link href="/status">
                   <SidebarMenuButton isActive={pathname.startsWith('/status')} tooltip="Status">
                     <Star />
@@ -135,14 +144,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   <SidebarMenuButton isActive={pathname.startsWith('/appointments')} tooltip="Meus Compromissos">
                     <CalendarDays />
                     <span>Compromissos</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <Link href="/support">
-                  <SidebarMenuButton isActive={pathname.startsWith('/support')} tooltip="Material de Apoio">
-                    <BookOpen />
-                    <span>Material de Apoio</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
