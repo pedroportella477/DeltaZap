@@ -7,41 +7,55 @@ export function middleware(request: NextRequest) {
   const authToken = request.cookies.get('auth-jid');
   const adminAuthToken = request.cookies.get('admin-auth');
 
-  const isAppLoginPage = pathname === '/login';
+  const isAdminRoute = pathname.startsWith('/admin');
   const isAdminLoginPage = pathname === '/admin/login';
+  
+  const isAppRoute = !isAdminRoute;
+  const isAppLoginPage = pathname === '/login';
 
-  // Handle admin routes
-  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+  // Handle root path redirection
+  if (pathname === '/') {
+      return NextResponse.redirect(new URL(authToken ? '/chat' : '/login', request.url));
+  }
+
+  // Handle Admin Routes
+  if (isAdminRoute) {
+    if (isAdminLoginPage) {
+      // If on admin login page and already logged in, redirect to dashboard
+      if (adminAuthToken) {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+      }
+      // Allow access to admin login page
+      return NextResponse.next();
+    }
+    
+    // For all other admin routes, require auth
     if (!adminAuthToken) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-  }
-  
-  if (isAdminLoginPage && adminAuthToken) {
-    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    
+    // Allow access to protected admin routes if authenticated
+    return NextResponse.next();
   }
 
-  // Handle app routes
-  const isAppRoute = !pathname.startsWith('/admin') && pathname !== '/login';
-
+  // Handle App Routes
   if (isAppRoute) {
+    if (isAppLoginPage) {
+      // If on app login page and already logged in, redirect to chat
+      if (authToken) {
+        return NextResponse.redirect(new URL('/chat', request.url));
+      }
+      // Allow access to app login page
+      return NextResponse.next();
+    }
+
+    // For all other app routes, require auth
     if (!authToken) {
-      // Se não estiver logado e tentar acessar uma página do app, redireciona para login
       return NextResponse.redirect(new URL('/login', request.url));
     }
-  }
 
-  if (isAppLoginPage && authToken) {
-    // Se estiver logado e tentar acessar a página de login, redireciona para o chat
-    return NextResponse.redirect(new URL('/chat', request.url));
-  }
-  
-  // Se o usuário acessar a raiz, redireciona com base no login
-  if (pathname === '/') {
-    if (authToken) {
-      return NextResponse.redirect(new URL('/chat', request.url));
-    }
-    return NextResponse.redirect(new URL('/login', request.url));
+    // Allow access to protected app routes if authenticated
+    return NextResponse.next();
   }
 
   return NextResponse.next();
