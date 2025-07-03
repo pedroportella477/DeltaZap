@@ -194,8 +194,8 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             sessionStorage.removeItem('xmpp_jid');
             sessionStorage.removeItem('xmpp_password');
         }
-        Cookies.remove('auth-jid');
-        Cookies.remove('auth-userId');
+        Cookies.remove('auth-jid', { path: '/' });
+        Cookies.remove('auth-userId', { path: '/' });
         setJid(null);
         setUserId(null);
         setRoster([]);
@@ -247,8 +247,8 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           sessionStorage.setItem('xmpp_password', passwordStr);
         }
         const bareJid = address.bare().toString();
-        Cookies.set('auth-jid', address.toString(), { expires: 1 });
-        Cookies.set('auth-userId', bareJid, { expires: 1 });
+        Cookies.set('auth-jid', address.toString(), { expires: 1, path: '/' });
+        Cookies.set('auth-userId', bareJid, { expires: 1, path: '/' });
         
         setJid(address.toString());
         setUserId(bareJid);
@@ -280,8 +280,8 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const chatHistory = await getChats(masterJid);
     setChats(chatHistory);
 
-    Cookies.set('auth-jid', masterJid, { expires: 1 });
-    Cookies.set('auth-userId', masterJid, { expires: 1 });
+    Cookies.set('auth-jid', masterJid, { expires: 1, path: '/' });
+    Cookies.set('auth-userId', masterJid, { expires: 1, path: '/' });
     if (typeof window !== 'undefined') {
         sessionStorage.setItem('xmpp_jid', masterJid);
         sessionStorage.setItem('xmpp_password', 'IS_MASTER_USER'); // Special flag
@@ -302,8 +302,8 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         sessionStorage.removeItem('xmpp_jid');
         sessionStorage.removeItem('xmpp_password');
     }
-    Cookies.remove('auth-jid');
-    Cookies.remove('auth-userId');
+    Cookies.remove('auth-jid', { path: '/' });
+    Cookies.remove('auth-userId', { path: '/' });
   }, [xmppClient]);
 
   const sendMessage = useCallback((to: string, body: string, type: Message['type'] = 'text', fileName?: string) => {
