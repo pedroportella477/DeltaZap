@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,18 +38,19 @@ export default function AppointmentsPage() {
     resolver: zodResolver(appointmentSchema),
   });
   
-  useEffect(() => {
+  const refreshAppointments = useCallback(async () => {
     if (!userId) return;
-    const fetchAppointments = async () => {
-      try {
-        const userAppointments = await getAppointments(userId);
-        setAppointments(userAppointments);
-      } catch (error) {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os compromissos.' });
-      }
-    };
-    fetchAppointments();
+    try {
+      const userAppointments = await getAppointments(userId);
+      setAppointments(userAppointments);
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os compromissos.' });
+    }
   }, [userId, toast]);
+  
+  useEffect(() => {
+    refreshAppointments();
+  }, [refreshAppointments]);
   
   useEffect(() => {
     if (!appointments.length || hasShownToast || !userId) return;
@@ -85,9 +86,9 @@ export default function AppointmentsPage() {
     
     try {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const newAppointment = await addAppointment(userId, dateStr, data.title);
-      setAppointments(prev => [...prev, newAppointment]);
+      await addAppointment(userId, dateStr, data.title);
       toast({ title: "Compromisso adicionado!" });
+      await refreshAppointments();
       setIsDialogOpen(false);
       reset();
     } catch (error: any) {
@@ -98,8 +99,8 @@ export default function AppointmentsPage() {
   const handleDeleteAppointment = async (id: string) => {
     try {
       await deleteAppointment(id);
-      setAppointments(prev => prev.filter(appt => appt.id !== id));
       toast({ title: "Compromisso removido!" });
+      await refreshAppointments();
     } catch (error) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível remover o compromisso.' });
     }

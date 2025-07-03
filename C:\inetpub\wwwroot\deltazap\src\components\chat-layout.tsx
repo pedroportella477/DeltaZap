@@ -3,8 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
-import Cookies from "js-cookie";
+import { useState } from "react";
 import {
   SidebarProvider,
   Sidebar,
@@ -59,12 +58,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const { disconnect, jid, userId, sendPresence, sendUnavailablePresence } = useXmpp();
   const [presence, setPresence] = useState('online');
 
-  const currentUser = useMemo(() => {
-    if (userId === 'master@deltazap.com') {
-      return { name: 'Master', avatar: 'https://placehold.co/100x100.png' };
-    }
-    return { name: 'Você', avatar: 'https://placehold.co/100x100.png' };
-  }, [userId]);
+  const currentUser = { 
+    name: userId === 'master@deltazap.com' ? 'Master' : (jid?.split('@')[0] || 'Usuário'), 
+    avatar: 'https://placehold.co/100x100.png' 
+  };
 
   const handleLogout = async () => {
     await disconnect();
