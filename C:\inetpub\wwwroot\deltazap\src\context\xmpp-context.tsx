@@ -6,7 +6,6 @@ import { client, xml } from '@xmpp/client';
 import type { XmppClient, Stanza } from '@xmpp/client';
 import Cookies from 'js-cookie';
 import { Chat, Message, User, UserPresence, addMessage, getChats } from '@/lib/data';
-import { serverTimestamp } from 'firebase/firestore';
 
 
 type XmppStatus = 'disconnected' | 'connecting' | 'online' | 'error' | 'restoring';
@@ -150,11 +149,11 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             new Notification(title, { body: msgType === 'text' ? body : 'Enviou uma mídia...', icon: '/icon.png', tag: bareFromJid });
         }
 
-        const newMessage: Omit<Message, 'id'> = {
+        const newMessage: Omit<Message, 'id'> & {timestamp: Date} = {
           chatId: bareFromJid,
           senderId: bareFromJid,
           content: body,
-          timestamp: serverTimestamp(),
+          timestamp: new Date(),
           read: isChatActive,
           reactions: {},
           type: msgType,
@@ -181,14 +180,14 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               messages: [fullMessage], unreadCount: 1,
             });
           }
-          return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
+          return newChats.sort((a,b) => (b.lastUpdated?.getTime() || 0) - (a.lastUpdated?.getTime() || 0));
         });
 
       } else if (typeAttr === 'groupchat') {
         const roomJid = fromJid.split('/')[0];
         const senderNickname = fromJid.split('/')[1];
 
-        if (!senderNickname) return; // Ignore messages without a nickname (e.g. subject changes)
+        if (!senderNickname) return;
 
         const isChatActive = roomJid === activeChatId && isWindowFocused;
 
@@ -198,9 +197,9 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             new Notification(title, { body: `${senderNickname}: ${msgType === 'text' ? body : 'Enviou uma mídia...'}`, icon: '/icon.png', tag: roomJid });
         }
 
-        const newMessage: Omit<Message, 'id'> = {
+        const newMessage: Omit<Message, 'id'> & {timestamp: Date} = {
           chatId: roomJid, senderId: senderNickname, content: body,
-          timestamp: serverTimestamp(), read: isChatActive, reactions: {},
+          timestamp: new Date(), read: isChatActive, reactions: {},
           type: msgType, fileName, sender: { name: senderNickname, id: senderNickname, avatar: '' }
         };
         addMessage(userId, newMessage);
@@ -223,7 +222,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               messages: [fullMessage], unreadCount: 1,
             });
           }
-          return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
+          return newChats.sort((a,b) => (b.lastUpdated?.getTime() || 0) - (a.lastUpdated?.getTime() || 0));
         });
       }
     }
@@ -397,26 +396,21 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const messageStanza = xml('message', { to, type: messageType, id: `msg${Date.now()}` }, 
         xml('body', {}, body),
+        xml('type', {}, type)
     );
     
-    // Add custom elements for non-text messages
-    const typeElement = messageStanza.getChild('body')?.getChild('type');
-    if (typeElement) typeElement.t(type); else messageStanza.getChild('body')?.c('type', {}, type);
-
     if (fileName) {
-       const fileNameElement = messageStanza.getChild('body')?.getChild('fileName');
-       if(fileNameElement) fileNameElement.t(fileName); else messageStanza.getChild('body')?.c('fileName', {}, fileName);
+       messageStanza.c('fileName', {}, fileName);
     }
     
     xmppClient.send(messageStanza);
 
-    // Only add individual messages to state immediately. Group messages wait for the echo.
     if (messageType === 'chat') {
-        const sentMessageData: Omit<Message, 'id'> = {
+        const sentMessageData: Omit<Message, 'id'> & { timestamp: Date } = {
           chatId: to,
           senderId: userId,
           content: body,
-          timestamp: serverTimestamp(),
+          timestamp: new Date(),
           read: true,
           reactions: {},
           type,
@@ -449,7 +443,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             };
             newChats.push(newChat);
           }
-          return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
+          return newChats.sort((a,b) => (b.lastUpdated?.getTime() || 0) - (a.lastUpdated?.getTime() || 0));
         });
     }
   }, [xmppClient, userId, roster, jid, chats]);

@@ -4,61 +4,38 @@ import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const authToken = request.cookies.get('auth-jid');
+  const authToken = request.cookies.get('auth-userId');
   const adminAuthToken = request.cookies.get('admin-auth');
 
   const isAdminRoute = pathname.startsWith('/admin');
-  const isAdminLoginPage = pathname === '/admin/login';
-  
   const isAppRoute = !isAdminRoute;
+  
+  const isAdminLoginPage = pathname === '/admin/login';
   const isAppLoginPage = pathname === '/login';
 
-  // Handle root path redirection
+  // Redirect root to the appropriate home page
   if (pathname === '/') {
-      if (authToken) {
-        return NextResponse.redirect(new URL('/chat', request.url));
-      }
-      return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('/chat', request.url));
   }
 
   // Handle Admin Routes
   if (isAdminRoute) {
-    if (isAdminLoginPage) {
-      // If on admin login page and already logged in, redirect to dashboard
-      if (adminAuthToken) {
-        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-      }
-      // Allow access to admin login page
-      return NextResponse.next();
-    }
-    
-    // For all other admin routes, require auth
-    if (!adminAuthToken) {
+    if (!adminAuthToken && !isAdminLoginPage) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
-    
-    // Allow access to protected admin routes if authenticated
-    return NextResponse.next();
+    if (adminAuthToken && isAdminLoginPage) {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    }
   }
 
   // Handle App Routes
   if (isAppRoute) {
-    if (isAppLoginPage) {
-      // If on app login page and already logged in, redirect to chat
-      if (authToken) {
-        return NextResponse.redirect(new URL('/chat', request.url));
-      }
-      // Allow access to app login page
-      return NextResponse.next();
-    }
-
-    // For all other app routes, require auth
-    if (!authToken) {
+    if (!authToken && !isAppLoginPage) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-
-    // Allow access to protected app routes if authenticated
-    return NextResponse.next();
+    if (authToken && isAppLoginPage) {
+      return NextResponse.redirect(new URL('/chat', request.url));
+    }
   }
 
   return NextResponse.next();
@@ -66,7 +43,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all routes except for API, Next.js internal static files, and image optimization files
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }

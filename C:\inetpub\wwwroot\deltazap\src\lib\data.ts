@@ -1,415 +1,203 @@
 
-import { db } from './firebase';
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  where,
-  addDoc,
-  doc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  getDoc,
-  setDoc,
-  limit,
-  Timestamp
-} from 'firebase/firestore';
+import { pool } from './postgres';
 
-// Core XMPP presence states
+// --- Type Definitions ---
 export type UserPresence = 'chat' | 'away' | 'dnd' | 'xa' | 'unavailable';
 
 export type User = {
-  id: string;
-  name: string;
-  avatar: string;
-  status: string;
-  // This represents the user's friendly presence status for the UI
+  id: string; name: string; avatar: string; status: string;
   presence: 'online' | 'ocupado' | 'cafe' | 'almoco' | 'offline';
 };
 
-export type Participant = {
-  userId: string;
-  role: 'admin' | 'member';
-};
+export type Participant = { userId: string; role: 'admin' | 'member'; };
 
 export type Message = {
-  id: string;
-  chatId: string;
-  senderId: string;
-  content: string;
-  timestamp: any; // Firestore Timestamp
-  read: boolean;
-  reactions: { [emoji: string]: number };
-  type: 'text' | 'image' | 'document';
-  fileName?: string;
-  replyTo?: {
-    messageId: string;
-    content: string;
-    senderName: string;
-  };
+  id: string; chatId: string; senderId: string; content: string;
+  timestamp: Date; read: boolean; reactions: { [emoji: string]: number };
+  type: 'text' | 'image' | 'document'; fileName?: string;
+  replyTo?: { messageId: string; content: string; senderName: string; };
   forwarded?: boolean;
   sender?: { name: string, id: string, avatar: string };
 };
 
 export type Chat = {
-  id:string;
-  type: "individual" | "group";
-  name?: string;
-  avatar?: string;
-  participants: Participant[];
-  messages: Message[];
-  unreadCount?: number;
-  lastUpdated?: any;
+  id:string; type: "individual" | "group"; name?: string; avatar?: string;
+  participants: Participant[]; messages: Message[];
+  unreadCount?: number; lastUpdated?: Date;
 };
 
-export type Status = {
-  id: string;
-  userId: string;
-  content: string;
-  timestamp: any; // Firestore Timestamp
-  type: 'text' | 'image';
-};
-
-export type Note = {
-  id:string;
-  userId: string;
-  title: string;
-  content: string;
-  color: string;
-  timestamp: any; // Firestore Timestamp
-};
-
-export type Appointment = {
-  id: string;
-  userId: string;
-  date: string; // YYYY-MM-DD format
-  title: string;
-  timestamp: any; // Firestore Timestamp
-};
-
-export type SharedLink = {
-  id: string;
-  url: string;
-  messageContent: string;
-  sender: User;
-  chat: { id: string; name: string; avatar?: string };
-  timestamp: string;
-};
-
-export type SupportMaterial = {
-  id: string;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  documentUrl?: string;
-  documentName?: string;
-  timestamp: any;
-};
-
-export type InternalLink = {
-  id: string;
-  title: string;
-  url: string;
-  timestamp: any;
-};
-
-// --- Demandas (Tarefas/Tickets) ---
+export type Status = { id: string; userId: string; content: string; timestamp: Date; type: 'text' | 'image'; };
+export type Note = { id:string; userId: string; title: string; content: string; color: string; timestamp: Date; };
+export type Appointment = { id: string; userId: string; date: string; title: string; timestamp: Date; };
+export type SharedLink = { id: string; url: string; messageContent: string; sender: User; chat: { id: string; name: string; avatar?: string }; timestamp: string; };
+export type SupportMaterial = { id: string; title: string; content: string; imageUrl?: string; documentUrl?: string; documentName?: string; timestamp: Date; };
+export type InternalLink = { id: string; title: string; url: string; timestamp: Date; };
 export type DemandPriority = 'Baixa' | 'Média' | 'Alta' | 'Urgente';
 export type DemandStatus = 'Pendente' | 'Em andamento' | 'Concluída' | 'Cancelada';
-
 export type Demand = {
-  id: string;
-  title: string;
-  description: string;
-  creatorId: string;
-  creatorName: string;
-  assigneeId: string;
-  assigneeName: string;
-  priority: DemandPriority;
-  dueDate: any; // Firestore Timestamp
-  status: DemandStatus;
-  createdAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
-};
-
-export type DemandComment = {
-  id: string;
-  demandId: string;
-  authorId: string;
-  authorName: string;
-  content: string;
-  createdAt: any; // Firestore Timestamp
+  id: string; title: string; description: string; creatorId: string; creatorName: string; assigneeId: string;
+  assigneeName: string; priority: DemandPriority; dueDate: Date; status: DemandStatus; createdAt: Date; updatedAt: Date;
 };
 
 const noteColors = [
-  'bg-yellow-200/50 dark:bg-yellow-800/30 border-yellow-400/50',
-  'bg-blue-200/50 dark:bg-blue-800/30 border-blue-400/50',
-  'bg-green-200/50 dark:bg-green-800/30 border-green-400/50',
-  'bg-pink-200/50 dark:bg-pink-800/30 border-pink-400/50',
+  'bg-yellow-200/50 dark:bg-yellow-800/30 border-yellow-400/50', 'bg-blue-200/50 dark:bg-blue-800/30 border-blue-400/50',
+  'bg-green-200/50 dark:bg-green-800/30 border-green-400/50', 'bg-pink-200/50 dark:bg-pink-800/30 border-pink-400/50',
   'bg-purple-200/50 dark:bg-purple-800/30 border-purple-400/50',
 ];
-
 const MAX_NOTES = 200;
 
-// --- Chat History Firestore Functions ---
-export async function getChats(userId: string): Promise<Chat[]> {
-  const chatsCol = collection(db, 'users', userId, 'chats');
-  const q = query(chatsCol, orderBy('lastUpdated', 'desc'));
-  const querySnapshot = await getDocs(q);
+// --- Helper Functions ---
+const mapToNote = (row: any): Note => ({ id: row.note_id, userId: row.user_id, title: row.title, content: row.content, color: row.color, timestamp: new Date(row.timestamp) });
+const mapToAppointment = (row: any): Appointment => ({ id: row.appointment_id, userId: row.user_id, date: new Date(row.date).toISOString().split('T')[0], title: row.title, timestamp: new Date(row.timestamp) });
+const mapToSupportMaterial = (row: any): SupportMaterial => ({ id: row.material_id, title: row.title, content: row.content, imageUrl: row.image_url, documentUrl: row.document_url, documentName: row.document_name, timestamp: new Date(row.timestamp) });
+const mapToInternalLink = (row: any): InternalLink => ({ id: row.link_id, title: row.title, url: row.url, timestamp: new Date(row.timestamp) });
+const mapToDemand = (row: any): Demand => ({
+    id: row.demand_id, title: row.title, description: row.description, creatorId: row.creator_id, creatorName: row.creator_name,
+    assigneeId: row.assignee_id, assigneeName: row.assignee_name, priority: row.priority, dueDate: new Date(row.due_date),
+    status: row.status, createdAt: new Date(row.created_at), updatedAt: new Date(row.updated_at),
+});
+const mapToStatus = (row: any): Status => ({ id: row.status_id, userId: row.user_id, content: row.content, timestamp: new Date(row.timestamp), type: row.type });
 
-  const chats = await Promise.all(querySnapshot.docs.map(async (doc) => {
-    const chatData = doc.data() as Omit<Chat, 'id' | 'messages'>;
-    const messagesCol = collection(db, 'users', userId, 'chats', doc.id, 'messages');
-    const messagesQuery = query(messagesCol, orderBy('timestamp', 'desc'), limit(50));
-    const messagesSnapshot = await getDocs(messagesQuery);
-    const messages = messagesSnapshot.docs.map(msgDoc => ({ id: msgDoc.id, ...msgDoc.data() } as Message)).reverse();
-    
+// --- Chat History Functions ---
+export async function getChats(userId: string): Promise<Chat[]> {
+  const res = await pool.query('SELECT * FROM user_chats WHERE owner_id = $1 ORDER BY last_updated DESC', [userId]);
+  const chats = await Promise.all(res.rows.map(async (chatRow) => {
+    const messagesRes = await pool.query('SELECT * FROM user_messages WHERE owner_id = $1 AND chat_id = $2 ORDER BY timestamp DESC LIMIT 50', [userId, chatRow.chat_id]);
+    const messages = messagesRes.rows.map(msgRow => ({
+      id: msgRow.message_id.toString(), chatId: msgRow.chat_id, senderId: msgRow.sender_id, content: msgRow.content,
+      timestamp: new Date(msgRow.timestamp), read: msgRow.read, reactions: msgRow.reactions || {}, type: msgRow.type,
+      fileName: msgRow.file_name, replyTo: msgRow.reply_to, forwarded: msgRow.forwarded
+    })).reverse();
     return {
-      id: doc.id,
-      ...chatData,
-      messages,
+      id: chatRow.chat_id, type: chatRow.type, name: chatRow.name, avatar: chatRow.avatar,
+      participants: [], messages, unreadCount: chatRow.unread_count, lastUpdated: new Date(chatRow.last_updated)
     } as Chat;
   }));
-
   return chats;
 }
 
-export async function addMessage(userId: string, message: Omit<Message, 'id'>) {
-    const { chatId } = message;
+export async function addMessage(userId: string, message: Omit<Message, 'id' | 'timestamp'> & { timestamp: Date }) {
+    const { chatId, senderId, content, read, reactions, type, fileName, replyTo, forwarded } = message;
     
-    const chatRef = doc(db, 'users', userId, 'chats', chatId);
-    const messagesCol = collection(chatRef, 'messages');
+    // Add message for the user
+    await pool.query(
+      'INSERT INTO user_messages (owner_id, chat_id, sender_id, content, timestamp, read, reactions, type, file_name, reply_to, forwarded) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+      [userId, chatId, senderId, content, message.timestamp, read, reactions, type, fileName, replyTo, forwarded]
+    );
 
-    await addDoc(messagesCol, message);
-
-    await setDoc(chatRef, { 
-        id: chatId,
-        type: message.chatId.includes('@conference.') ? 'group' : 'individual',
-        name: message.chatId.split('@')[0],
-        lastUpdated: message.timestamp 
-    }, { merge: true });
+    // Create or update the chat entry
+    const chatType = message.chatId.includes('@conference.') ? 'group' : 'individual';
+    const chatName = message.chatId.split('@')[0];
+    await pool.query(
+      `INSERT INTO user_chats (owner_id, chat_id, type, name, last_updated) VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (owner_id, chat_id) DO UPDATE SET last_updated = EXCLUDED.last_updated`,
+      [userId, chatId, chatType, chatName, message.timestamp]
+    );
 }
 
+// --- Notes Functions ---
 export async function getNotes(userId: string): Promise<Note[]> {
-  if (!userId) return [];
-  const notesCol = collection(db, 'notes');
-  const q = query(notesCol, where('userId', '==', userId), orderBy('timestamp', 'desc'));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
+  const res = await pool.query('SELECT * FROM notes WHERE user_id = $1 ORDER BY timestamp DESC', [userId]);
+  return res.rows.map(mapToNote);
 }
-
 export async function addNote(userId: string, title: string, content: string): Promise<Note> {
-  if (!userId) {
-    throw new Error("Usuário não autenticado.");
-  }
-
-  const notesCollection = collection(db, 'notes');
-  const userNotesQuery = query(notesCollection, where('userId', '==', userId));
-  const userNotesSnapshot = await getDocs(userNotesQuery);
-  if (userNotesSnapshot.size >= MAX_NOTES) {
-    throw new Error(`Não é possível adicionar mais de ${MAX_NOTES} notas.`);
-  }
-
-  const newNoteData = {
-    userId,
-    title,
-    content,
-    color: noteColors[Math.floor(Math.random() * noteColors.length)],
-    timestamp: serverTimestamp(),
-  };
-  const docRef = await addDoc(notesCollection, newNoteData);
-  const docSnap = await getDoc(docRef);
-  return { id: docSnap.id, ...docSnap.data() } as Note;
+  const countRes = await pool.query('SELECT COUNT(*) FROM notes WHERE user_id = $1', [userId]);
+  if (parseInt(countRes.rows[0].count, 10) >= MAX_NOTES) throw new Error(`Não é possível adicionar mais de ${MAX_NOTES} notas.`);
+  const color = noteColors[Math.floor(Math.random() * noteColors.length)];
+  const res = await pool.query('INSERT INTO notes(user_id, title, content, color) VALUES($1, $2, $3, $4) RETURNING *', [userId, title, content, color]);
+  return mapToNote(res.rows[0]);
 }
-
 export async function updateNote(noteId: string, title: string, content: string): Promise<void> {
-  const noteRef = doc(db, 'notes', noteId);
-  await updateDoc(noteRef, {
-    title,
-    content,
-    timestamp: serverTimestamp()
-  });
+  await pool.query('UPDATE notes SET title = $1, content = $2, timestamp = NOW() WHERE note_id = $3', [title, content, noteId]);
 }
-
 export async function deleteNote(noteId: string): Promise<void> {
-  await deleteDoc(doc(db, 'notes', noteId));
-}
-
-// Mock function for adding a reaction
-export function addReaction(chatId: string, messageId: string, emoji: string) {
-  // In a real app, this would update Firestore
-  console.log(`Reacted with ${emoji} to message ${messageId} in chat ${chatId}`);
+  await pool.query('DELETE FROM notes WHERE note_id = $1', [noteId]);
 }
 
 // --- Status Functions ---
 export async function addStatus(userId: string, content: string, type: 'text' | 'image'): Promise<Status> {
-  const newStatusData = {
-    userId,
-    content,
-    type,
-    timestamp: serverTimestamp(),
-  };
-  const docRef = await addDoc(collection(db, 'statuses'), newStatusData);
-  const docSnap = await getDoc(docRef);
-  
-  return { 
-      id: docSnap.id, 
-      ...docSnap.data(),
-  } as Status;
+  const res = await pool.query('INSERT INTO statuses(user_id, content, type) VALUES($1, $2, $3) RETURNING *', [userId, content, type]);
+  return mapToStatus(res.rows[0]);
 }
-
 export async function getStatusesForRoster(userIds: string[]): Promise<Status[]> {
-  if (userIds.length === 0) {
-    return [];
-  }
-  
-  const twentyFourHoursAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
-
-  const statusPromises = userIds.map(uid => {
-    const statusesCol = collection(db, 'statuses');
-    const q = query(
-      statusesCol, 
-      where('userId', '==', uid),
-      where('timestamp', '>=', twentyFourHoursAgo),
-      orderBy('timestamp', 'desc'), 
-      limit(1)
-    );
-    return getDocs(q);
-  });
-
-  const snapshots = await Promise.all(statusPromises);
-  const allStatuses: Status[] = [];
-
-  snapshots.forEach(snapshot => {
-    snapshot.forEach(doc => {
-      allStatuses.push({
-        id: doc.id,
-        ...doc.data(),
-      } as Status);
-    });
-  });
-
-  return allStatuses.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+    if (userIds.length === 0) return [];
+    // Using a Common Table Expression (CTE) to get the latest status per user in the last 24 hours
+    const query = `
+      WITH latest_statuses AS (
+        SELECT *, ROW_NUMBER() OVER(PARTITION BY user_id ORDER BY timestamp DESC) as rn
+        FROM statuses
+        WHERE user_id = ANY($1::text[]) AND timestamp >= NOW() - INTERVAL '24 hours'
+      )
+      SELECT * FROM latest_statuses WHERE rn = 1 ORDER BY timestamp DESC;
+    `;
+    const res = await pool.query(query, [userIds]);
+    return res.rows.map(mapToStatus);
 }
-
 
 // --- Appointments Functions ---
 export async function getAppointments(userId: string): Promise<Appointment[]> {
-  if (!userId) return [];
-  const appointmentsCol = collection(db, 'appointments');
-  const q = query(appointmentsCol, where('userId', '==', userId), orderBy('date', 'asc'));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+  const res = await pool.query('SELECT * FROM appointments WHERE user_id = $1 ORDER BY date ASC', [userId]);
+  return res.rows.map(mapToAppointment);
 }
-
 export async function addAppointment(userId: string, date: string, title: string): Promise<Appointment> {
-  if (!userId) throw new Error("Usuário não autenticado.");
-  
-  const newAppointmentData = {
-    userId,
-    date, // YYYY-MM-DD
-    title,
-    timestamp: serverTimestamp(),
-  };
-  const docRef = await addDoc(collection(db, 'appointments'), newAppointmentData);
-  const docSnap = await getDoc(docRef);
-  return { id: docSnap.id, ...docSnap.data() } as Appointment;
+  const res = await pool.query('INSERT INTO appointments(user_id, date, title) VALUES($1, $2, $3) RETURNING *', [userId, date, title]);
+  return mapToAppointment(res.rows[0]);
 }
-
 export async function deleteAppointment(appointmentId: string): Promise<void> {
-  await deleteDoc(doc(db, 'appointments', appointmentId));
+  await pool.query('DELETE FROM appointments WHERE appointment_id = $1', [appointmentId]);
 }
 
-
-// --- Firestore Functions for Admin Panel ---
-
-// Support Materials
+// --- Admin Panel Functions ---
 export async function getSupportMaterials(): Promise<SupportMaterial[]> {
-  const materialsCol = collection(db, 'supportMaterials');
-  const q = query(materialsCol, orderBy('timestamp', 'desc'));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportMaterial));
+  const res = await pool.query('SELECT * FROM support_materials ORDER BY timestamp DESC');
+  return res.rows.map(mapToSupportMaterial);
 }
-
 export async function addSupportMaterial(data: Omit<SupportMaterial, 'id' | 'timestamp'>): Promise<SupportMaterial> {
-  const newMaterialData = {
-    ...data,
-    timestamp: serverTimestamp(),
-  };
-  const docRef = await addDoc(collection(db, 'supportMaterials'), newMaterialData);
-  const docSnap = await getDoc(docRef);
-  return { id: docSnap.id, ...docSnap.data() } as SupportMaterial;
+  const res = await pool.query(
+    'INSERT INTO support_materials(title, content, image_url, document_url, document_name) VALUES($1, $2, $3, $4, $5) RETURNING *',
+    [data.title, data.content, data.imageUrl, data.documentUrl, data.documentName]
+  );
+  return mapToSupportMaterial(res.rows[0]);
 }
-
 export async function deleteSupportMaterial(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'supportMaterials', id));
+  await pool.query('DELETE FROM support_materials WHERE material_id = $1', [id]);
 }
 
-// Internal Links
 export async function getInternalLinks(): Promise<InternalLink[]> {
-  const linksCol = collection(db, 'internalLinks');
-  const q = query(linksCol, orderBy('timestamp', 'desc'));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InternalLink));
+  const res = await pool.query('SELECT * FROM internal_links ORDER BY timestamp DESC');
+  return res.rows.map(mapToInternalLink);
 }
-
 export async function addInternalLink(title: string, url: string): Promise<InternalLink> {
-  const newLinkData = {
-    title,
-    url,
-    timestamp: serverTimestamp(),
-  };
-  const docRef = await addDoc(collection(db, 'internalLinks'), newLinkData);
-  const docSnap = await getDoc(docRef);
-  return { id: docSnap.id, ...docSnap.data() } as InternalLink;
+  const res = await pool.query('INSERT INTO internal_links(title, url) VALUES($1, $2) RETURNING *', [title, url]);
+  return mapToInternalLink(res.rows[0]);
 }
-
 export async function updateInternalLink(id: string, title: string, url: string): Promise<void> {
-  const linkRef = doc(db, 'internalLinks', id);
-  await updateDoc(linkRef, { title, url });
+  await pool.query('UPDATE internal_links SET title = $1, url = $2 WHERE link_id = $3', [title, url, id]);
 }
-
 export async function deleteInternalLink(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'internalLinks', id));
+  await pool.query('DELETE FROM internal_links WHERE link_id = $1', [id]);
 }
 
 // --- Demand/Task Management Functions ---
 export async function addDemand(demandData: Omit<Demand, 'id' | 'createdAt' | 'updatedAt'>): Promise<Demand> {
-  const dataWithTimestamps = {
-    ...demandData,
-    status: 'Pendente' as DemandStatus,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-  const docRef = await addDoc(collection(db, 'demands'), dataWithTimestamps);
-  const docSnap = await getDoc(docRef);
-  return { id: docSnap.id, ...docSnap.data() } as Demand;
+  const res = await pool.query(
+    `INSERT INTO demands(title, description, creator_id, creator_name, assignee_id, assignee_name, priority, due_date, status, created_at, updated_at) 
+     VALUES($1, $2, $3, $4, $5, $6, $7, $8, 'Pendente', NOW(), NOW()) RETURNING *`,
+    [demandData.title, demandData.description, demandData.creatorId, demandData.creatorName, demandData.assigneeId, demandData.assigneeName, demandData.priority, demandData.dueDate]
+  );
+  return mapToDemand(res.rows[0]);
 }
-
 export async function getDemandsForUser(userId: string): Promise<{ assignedToMe: Demand[], createdByMe: Demand[] }> {
-  if (!userId) return { assignedToMe: [], createdByMe: [] };
-  const demandsCol = collection(db, 'demands');
-  
-  const assignedQuery = query(demandsCol, where('assigneeId', '==', userId), orderBy('createdAt', 'desc'));
-  const createdQuery = query(demandsCol, where('creatorId', '==', userId), orderBy('createdAt', 'desc'));
-
-  const [assignedSnapshot, createdSnapshot] = await Promise.all([
-    getDocs(assignedQuery),
-    getDocs(createdQuery)
-  ]);
-
-  const assignedToMe = assignedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demand));
-  const createdByMe = createdSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demand));
-
-  return { assignedToMe, createdByMe };
+    const assignedQuery = pool.query("SELECT * FROM demands WHERE assignee_id = $1 ORDER BY created_at DESC", [userId]);
+    const createdQuery = pool.query("SELECT * FROM demands WHERE creator_id = $1 ORDER BY created_at DESC", [userId]);
+    const [assignedRes, createdRes] = await Promise.all([assignedQuery, createdQuery]);
+    return {
+        assignedToMe: assignedRes.rows.map(mapToDemand),
+        createdByMe: createdRes.rows.map(mapToDemand),
+    };
 }
-
 export async function updateDemand(demandId: string, data: Partial<Omit<Demand, 'id'>>): Promise<void> {
-  const demandRef = doc(db, 'demands', demandId);
-  await updateDoc(demandRef, {
-    ...data,
-    updatedAt: serverTimestamp(),
-  });
+  const fields = Object.keys(data).map((key, i) => `"${key}" = $${i + 1}`).join(', ');
+  const values = Object.values(data);
+  await pool.query(`UPDATE demands SET ${fields}, updated_at = NOW() WHERE demand_id = $${values.length + 1}`, [...values, demandId]);
 }

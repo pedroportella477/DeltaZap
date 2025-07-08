@@ -108,6 +108,7 @@ export default function AppointmentsPage() {
 
   const appointmentDates = useMemo(() => {
     return appointments.map(a => {
+        // Use UTC to avoid timezone issues when creating dates from YYYY-MM-DD strings
         const [year, month, day] = a.date.split('-').map(Number);
         return new Date(Date.UTC(year, month - 1, day));
     });

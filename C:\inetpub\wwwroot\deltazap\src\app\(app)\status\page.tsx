@@ -22,6 +22,7 @@ import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useXmpp } from '@/context/xmpp-context';
+import { Input } from '@/components/ui/input';
 
 const fileToDataUrl = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -50,8 +51,7 @@ export default function StatusPage() {
       try {
         const userIdsToFetch = [...new Set([userId!, ...roster.map(r => r.jid)])];
         const fetchedStatuses = await getStatusesForRoster(userIdsToFetch);
-        const sortedStatuses = fetchedStatuses.sort((a,b) => b.timestamp.toMillis() - a.timestamp.toMillis());
-        setStatuses(sortedStatuses);
+        setStatuses(fetchedStatuses);
       } catch (error) {
         console.error("Failed to fetch statuses:", error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os status." });
@@ -144,7 +144,7 @@ export default function StatusPage() {
                     <p className="font-semibold">Meu status</p>
                     <p className="text-sm text-muted-foreground">
                       {myLastStatus
-                        ? (isMounted ? formatDistanceToNow(myLastStatus.timestamp.toDate(), { locale: ptBR, addSuffix: true }) : '...')
+                        ? (isMounted ? formatDistanceToNow(myLastStatus.timestamp, { locale: ptBR, addSuffix: true }) : '...')
                         : "Toque para adicionar uma atualização"
                       }
                     </p>
@@ -253,7 +253,7 @@ export default function StatusPage() {
                         <div>
                           <p className="font-semibold">{user.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {isMounted ? formatDistanceToNow(status.timestamp.toDate(), { locale: ptBR, addSuffix: true }) : '...'}
+                            {isMounted ? formatDistanceToNow(status.timestamp, { locale: ptBR, addSuffix: true }) : '...'}
                           </p>
                         </div>
                       </div>

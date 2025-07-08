@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
-import { Info, AlertTriangle } from 'lucide-react';
+import { Info, AlertTriangle, Database } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function AdminSettingsPage() {
@@ -73,18 +73,24 @@ export default function AdminSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Configuração do Banco de Dados (Firestore)</CardTitle>
+          <CardTitle>Configuração do Banco de Dados (PostgreSQL)</CardTitle>
           <CardDescription>
-            A conexão com o Firestore é configurada através de variáveis de ambiente para maior segurança.
+            A conexão com o banco de dados PostgreSQL é configurada exclusivamente através de variáveis de ambiente para garantir a segurança.
           </CardDescription>
         </CardHeader>
         <CardContent>
            <div className="p-4 rounded-lg bg-muted/50 flex items-start gap-3">
-              <Info className="h-5 w-5 text-primary mt-1 shrink-0"/>
+              <Database className="h-5 w-5 text-primary mt-1 shrink-0"/>
               <div>
-                <h4 className="font-semibold">Solução Nativa Firebase</h4>
+                <h4 className="font-semibold">Configuração via Variável de Ambiente</h4>
                  <p className="text-sm text-muted-foreground">
-                   A configuração do Firebase Firestore é gerenciada através de variáveis de ambiente no seu projeto (ex: `.env.local`). As credenciais são carregadas automaticamente pelo sistema, garantindo segurança e integração nativa. Nenhuma configuração adicional é necessária aqui.
+                   Para conectar o aplicativo ao seu banco de dados PostgreSQL, você deve definir a variável de ambiente `POSTGRES_URL` no seu servidor.
+                 </p>
+                 <code className='mt-2 block text-xs bg-gray-700 text-white p-2 rounded'>
+                    POSTGRES_URL="postgres://SEU_USUARIO:SUA_SENHA@SEU_HOST:SUA_PORTA/SEU_BANCO"
+                 </code>
+                 <p className="text-xs text-muted-foreground mt-2">
+                    Nenhuma configuração é necessária nesta interface. O aplicativo lerá a variável de ambiente automaticamente ao iniciar.
                  </p>
               </div>
            </div>
