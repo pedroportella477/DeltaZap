@@ -27,6 +27,7 @@ interface XmppContextType {
   userId: string | null;
   error: string | null;
   roster: RosterItem[];
+  subscriptionRequests: string[];
   chats: Chat[];
   connect: (jid: string, password: string) => Promise<void>;
   loginAsMaster: () => Promise<void>;
@@ -36,6 +37,9 @@ interface XmppContextType {
   getChatById: (chatId: string) => Chat | undefined;
   sendPresence: (show: 'chat' | 'away' | 'dnd' | 'xa' | undefined, statusText?: string) => void;
   sendUnavailablePresence: () => void;
+  addContact: (jid: string) => void;
+  acceptSubscription: (jid: string) => void;
+  declineSubscription: (jid: string) => void;
 }
 
 const XmppContext = createContext<XmppContextType | undefined>(undefined);
@@ -47,6 +51,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [roster, setRoster] = useState<RosterItem[]>([]);
+  const [subscriptionRequests, setSubscriptionRequests] = useState<string[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isWindowFocused, setIsWindowFocused] = useState(true);
@@ -65,10 +70,49 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const handleStanza = useCallback((stanza: Stanza) => {
-    // Handle Presence
+    if (stanza.is('iq') && stanza.getAttr('type') === 'set') {
+      const query = stanza.getChild('query', 'jabber:iq:roster');
+      if (query) {
+          const itemEl = query.getChild('item');
+          if (itemEl) {
+              const jid = itemEl.getAttr('jid');
+              const subscription = itemEl.getAttr('subscription');
+              
+              if (subscription === 'remove') {
+                  setRoster(prev => prev.filter(r => r.jid !== jid));
+              } else {
+                  const newRosterItem: RosterItem = {
+                      jid: jid,
+                      name: itemEl.getAttr('name'),
+                      subscription: subscription as RosterItem['subscription'],
+                      groups: itemEl.getChildren('group').map(g => g.getText()),
+                      presence: 'unavailable',
+                  };
+                  setRoster(prev => {
+                      const existingIndex = prev.findIndex(r => r.jid === jid);
+                      if (existingIndex > -1) {
+                          const updatedRoster = [...prev];
+                          updatedRoster[existingIndex] = { ...updatedRoster[existingIndex], ...newRosterItem };
+                          return updatedRoster;
+                      } else {
+                          return [...prev, newRosterItem];
+                      }
+                  });
+              }
+          }
+      }
+    }
+
+
     if (stanza.is('presence')) {
       const from = stanza.getAttr('from').split('/')[0];
       const type = stanza.getAttr('type');
+      
+      if (type === 'subscribe') {
+        setSubscriptionRequests(prev => prev.includes(from) ? prev : [...prev, from]);
+        return;
+      }
+      
       const show = stanza.getChildText('show');
       const statusText = stanza.getChildText('status');
 
@@ -89,7 +133,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
     
-    // Handle Messages
     if (stanza.is('message') && stanza.getChild('body')) {
       const fromJid = stanza.getAttr('from');
       const bareFromJid = fromJid.split('/')[0];
@@ -99,20 +142,18 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       const isChatActive = bareFromJid === activeChatId && isWindowFocused;
 
-      // Browser Notification Logic
       if (!isChatActive && Notification.permission === 'granted') {
           const contact = roster.find(r => r.jid === bareFromJid);
           const title = contact?.name || bareFromJid;
           const notification = new Notification(title, {
               body: type === 'text' ? body : 'Enviou uma mídia...',
-              icon: '/icon.png', // A placeholder icon
-              tag: bareFromJid, // Groups notifications by chat
+              icon: '/icon.png',
+              tag: bareFromJid,
           });
           notification.onclick = () => {
               window.focus();
           };
       }
-
 
       if (stanza.getAttr('type') === 'chat' && userId) {
         const newMessage: Omit<Message, 'id'> = {
@@ -126,7 +167,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           fileName,
         };
 
-        // Save received message to Firestore
         addMessage(userId, newMessage);
 
         setChats(prevChats => {
@@ -222,7 +262,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('Online as', address.toString());
         await newClient.send(xml('presence'));
         
-        // Request notification permission
         if (typeof window !== 'undefined' && 'Notification' in window) {
           if (Notification.permission === 'default') {
             await Notification.requestPermission();
@@ -238,7 +277,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name: item.getAttr('name'),
           subscription: item.getAttr('subscription'),
           groups: item.getChildren('group').map(g => g.getText()),
-          presence: 'unavailable', // Default presence
+          presence: 'unavailable',
         })) || [];
         setRoster(items as RosterItem[]);
         
@@ -254,7 +293,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUserId(bareJid);
         setStatus('online');
         
-        // Load chat history from Firestore
         const chatHistory = await getChats(bareJid);
         setChats(chatHistory);
       });
@@ -270,8 +308,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [xmppClient, handleStanza]);
 
   const loginAsMaster = useCallback(async () => {
-    // A tela de login gerencia seu próprio estado de carregamento.
-    // Esta função definirá apenas o status final da conexão.
     setError(null);
     try {
         const masterJid = 'master@deltazap.com';
@@ -295,7 +331,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setStatus('error');
         setError("Falha ao entrar como master. Verifique a conexão com o banco de dados.");
         
-        // Limpeza em caso de falha
         if (typeof window !== 'undefined') {
             sessionStorage.removeItem('xmpp_jid');
             sessionStorage.removeItem('xmpp_password');
@@ -314,7 +349,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error during disconnect:', e);
       }
     }
-    // Also clear master session
     if (typeof window !== 'undefined') {
         sessionStorage.removeItem('xmpp_jid');
         sessionStorage.removeItem('xmpp_password');
@@ -325,20 +359,23 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const sendMessage = useCallback((to: string, body: string, type: Message['type'] = 'text', fileName?: string) => {
     if (!xmppClient || !userId || jid === 'master@deltazap.com') {
-      console.warn("Master user cannot send messages.");
+      if (jid === 'master@deltazap.com') console.warn("Master user cannot send messages.");
       return;
     };
 
     const messageStanza = xml('message', { to, type: 'chat', id: `msg${Date.now()}` }, 
         xml('body', {}, body),
     );
-    if(type !== 'text') {
-        messageStanza.getChild('body')?.append(xml('type', {}, type));
-        if (fileName) {
-            messageStanza.getChild('body')?.append(xml('fileName', {}, fileName));
-        }
-    }
+    
+    // Add custom elements for non-text messages
+    const typeElement = messageStanza.getChild('body')?.getChild('type');
+    if (typeElement) typeElement.t(type); else messageStanza.getChild('body')?.c('type', {}, type);
 
+    if (fileName) {
+       const fileNameElement = messageStanza.getChild('body')?.getChild('fileName');
+       if(fileNameElement) fileNameElement.t(fileName); else messageStanza.getChild('body')?.c('fileName', {}, fileName);
+    }
+    
     xmppClient.send(messageStanza);
 
     const sentMessageData: Omit<Message, 'id'> = {
@@ -352,7 +389,6 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fileName,
     };
     
-    // Add message to Firestore
     addMessage(userId, sentMessageData);
     
     const sentMessage = { ...sentMessageData, id: messageStanza.getAttr('id') };
@@ -398,7 +434,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const sendPresence = useCallback(async (show: 'chat' | 'away' | 'dnd' | 'xa' | undefined, statusText?: string) => {
     if (!xmppClient) return;
     const presence = xml('presence');
-    if (show && show !== 'chat') { // 'chat' is the default, so it's not needed
+    if (show && show !== 'chat') {
       presence.c('show', {}, show);
     }
     if (statusText) {
@@ -411,6 +447,24 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (xmppClient) {
       await xmppClient.send(xml('presence', { type: 'unavailable' }));
     }
+  }, [xmppClient]);
+
+  const addContact = useCallback((jid: string) => {
+    if (!xmppClient) return;
+    xmppClient.send(xml('presence', { to: jid, type: 'subscribe' }));
+  }, [xmppClient]);
+
+  const acceptSubscription = useCallback((jid: string) => {
+    if (!xmppClient) return;
+    xmppClient.send(xml('presence', { to: jid, type: 'subscribed' }));
+    xmppClient.send(xml('presence', { to: jid, type: 'subscribe' }));
+    setSubscriptionRequests(prev => prev.filter(reqJid => reqJid !== jid));
+  }, [xmppClient]);
+
+  const declineSubscription = useCallback((jid: string) => {
+    if (!xmppClient) return;
+    xmppClient.send(xml('presence', { to: jid, type: 'unsubscribed' }));
+    setSubscriptionRequests(prev => prev.filter(reqJid => reqJid !== jid));
   }, [xmppClient]);
 
 
@@ -432,7 +486,7 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []); 
 
   return (
-    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, loginAsMaster, disconnect, roster, chats, sendMessage, markChatAsRead, getChatById, sendPresence, sendUnavailablePresence }}>
+    <XmppContext.Provider value={{ client: xmppClient, status, jid, userId, error, connect, loginAsMaster, disconnect, roster, subscriptionRequests, chats, sendMessage, markChatAsRead, getChatById, sendPresence, sendUnavailablePresence, addContact, acceptSubscription, declineSubscription }}>
       {status === 'restoring' ? (
         <div className="flex h-screen w-screen items-center justify-center bg-background">
           <p>Restaurando sessão...</p>
