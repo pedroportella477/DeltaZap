@@ -1,6 +1,8 @@
 # DeltaZap
 
-DeltaZap é uma plataforma de comunicação corporativa construída com Next.js, TypeScript e Tailwind CSS. Ela se conecta a um servidor XMPP (como Openfire) para comunicação em tempo real e utiliza PostgreSQL para persistência de dados adicionais, como anotações, compromissos e materiais de apoio.
+O DeltaZap é uma plataforma de comunicação corporativa que utiliza o Next.js para a interface do usuário. A autenticação (login) e a comunicação em tempo real (chat) são totalmente gerenciadas por um **servidor XMPP externo (como Openfire)**. A aplicação se conecta a este servidor para operar, o que significa que todos os usuários e senhas devem ser criados no painel do Openfire.
+
+Para funcionalidades adicionais, o DeltaZap usa um banco de dados **PostgreSQL** para persistir dados como histórico de conversas, anotações, compromissos e materiais de apoio.
 
 ## Funcionalidades Principais
 
