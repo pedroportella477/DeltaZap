@@ -76,11 +76,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
 
   const getDate = () => {
     if (!message.timestamp) return null;
-    // Handle both Firestore Timestamp and ISO string
-    const date = typeof message.timestamp === 'string' 
-      ? new Date(message.timestamp) 
-      : message.timestamp.toDate();
-    return date;
+    return new Date(message.timestamp);
   }
 
   const formattedTime = isMounted ? (getDate() ? format(getDate()!, "HH:mm") : '') : '';

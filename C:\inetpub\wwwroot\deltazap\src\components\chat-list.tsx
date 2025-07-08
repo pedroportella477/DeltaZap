@@ -186,7 +186,7 @@ export function ChatList() {
                             </p>
                           </div>
                           <div className="flex flex-col items-end space-y-1 ml-2 text-xs text-muted-foreground whitespace-nowrap">
-                            {lastMessage?.timestamp && formatDistanceToNow(typeof lastMessage.timestamp === 'string' ? new Date(lastMessage.timestamp) : lastMessage.timestamp.toDate(), { locale: ptBR, addSuffix: true })}
+                            {lastMessage?.timestamp && formatDistanceToNow(new Date(lastMessage.timestamp), { locale: ptBR, addSuffix: true })}
                             {chat.unreadCount && chat.unreadCount > 0 && (
                                 <Badge className="h-5 w-5 flex items-center justify-center p-0">{chat.unreadCount}</Badge>
                             )}

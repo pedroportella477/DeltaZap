@@ -149,7 +149,7 @@ export default function DemandsPage() {
             <TableCell>
                 <Badge variant={getPriorityBadgeVariant(demand.priority)}>{demand.priority}</Badge>
             </TableCell>
-            <TableCell>{demand.dueDate ? format(demand.dueDate.toDate(), 'dd/MM/yyyy') : '-'}</TableCell>
+            <TableCell>{demand.dueDate ? format(demand.dueDate, 'dd/MM/yyyy') : '-'}</TableCell>
              <TableCell>{demand.creatorId === userId ? demand.assigneeName : demand.creatorName}</TableCell>
             <TableCell>
                  <Select value={demand.status} onValueChange={(value) => handleStatusChange(demand.id, value as DemandStatus)}>

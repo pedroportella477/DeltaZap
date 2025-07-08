@@ -8,12 +8,12 @@ export function middleware(request: NextRequest) {
   const adminAuthToken = request.cookies.get('admin-auth');
 
   const isAdminRoute = pathname.startsWith('/admin');
-  const isAppRoute = !isAdminRoute;
+  const isAppRoute = !isAdminRoute && pathname !== '/login'; // Exclude login page from app routes that require auth
   
   const isAdminLoginPage = pathname === '/admin/login';
   const isAppLoginPage = pathname === '/login';
 
-  // Redirect root to the appropriate home page
+  // Redirect root to chat page
   if (pathname === '/') {
     return NextResponse.redirect(new URL('/chat', request.url));
   }
@@ -30,12 +30,14 @@ export function middleware(request: NextRequest) {
 
   // Handle App Routes
   if (isAppRoute) {
-    if (!authToken && !isAppLoginPage) {
+    if (!authToken) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-    if (authToken && isAppLoginPage) {
-      return NextResponse.redirect(new URL('/chat', request.url));
-    }
+  }
+
+  // If user is logged in and tries to access login page, redirect to chat
+  if (authToken && isAppLoginPage) {
+    return NextResponse.redirect(new URL('/chat', request.url));
   }
 
   return NextResponse.next();

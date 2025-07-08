@@ -190,14 +190,21 @@ export async function addDemand(demandData: Omit<Demand, 'id' | 'createdAt' | 'u
 export async function getDemandsForUser(userId: string): Promise<{ assignedToMe: Demand[], createdByMe: Demand[] }> {
     const assignedQuery = pool.query("SELECT * FROM demands WHERE assignee_id = $1 ORDER BY created_at DESC", [userId]);
     const createdQuery = pool.query("SELECT * FROM demands WHERE creator_id = $1 ORDER BY created_at DESC", [userId]);
-    const [assignedRes, createdRes] = await Promise.all([assignedQuery, createdQuery]);
+    const [assignedRes, createdQuery] = await Promise.all([assignedQuery, createdQuery]);
     return {
         assignedToMe: assignedRes.rows.map(mapToDemand),
-        createdByMe: createdRes.rows.map(mapToDemand),
+        createdByMe: createdQuery.rows.map(mapToDemand),
     };
 }
 export async function updateDemand(demandId: string, data: Partial<Omit<Demand, 'id'>>): Promise<void> {
   const fields = Object.keys(data).map((key, i) => `"${key}" = $${i + 1}`).join(', ');
   const values = Object.values(data);
   await pool.query(`UPDATE demands SET ${fields}, updated_at = NOW() WHERE demand_id = $${values.length + 1}`, [...values, demandId]);
+}
+
+// Mock function for adding a reaction
+export async function addReaction(chatId: string, messageId: string, emoji: string) {
+  // This is a more complex feature, for now we log it.
+  // In a real app, this would update the `reactions` JSONB column for the specific message.
+  console.log(`Reacted with ${emoji} to message ${messageId} in chat ${chatId}`);
 }
