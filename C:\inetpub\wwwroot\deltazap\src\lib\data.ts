@@ -49,11 +49,12 @@ export type Message = {
     senderName: string;
   };
   forwarded?: boolean;
+  sender?: { name: string, id: string, avatar: string };
 };
 
 export type Chat = {
   id:string;
-  type: "individual";
+  type: "individual" | "group";
   name?: string;
   avatar?: string;
   participants: Participant[];

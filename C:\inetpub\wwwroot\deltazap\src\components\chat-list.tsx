@@ -7,7 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Search, MessageSquare, Circle, UserPlus, Check, X } from "lucide-react";
+import { Search, MessageSquare, UserPlus, Check, X, Users } from "lucide-react";
 import { Input } from "./ui/input";
 import { useXmpp } from "@/context/xmpp-context";
 import { Skeleton } from "./ui/skeleton";
@@ -168,9 +168,14 @@ export function ChatList() {
                           <div className="relative mr-4">
                             <Avatar className="h-12 w-12">
                               <AvatarImage src={chat.avatar} alt={chat.name || chat.id} />
-                              <AvatarFallback>{(chat.name || chat.id).charAt(0).toUpperCase()}</AvatarFallback>
+                              <AvatarFallback>
+                                {chat.type === 'group' 
+                                  ? <Users className="h-6 w-6" /> 
+                                  : (chat.name || chat.id).charAt(0).toUpperCase()
+                                }
+                              </AvatarFallback>
                             </Avatar>
-                            {contact?.presence && contact.presence !== 'unavailable' && (
+                            {contact?.presence && contact.presence !== 'unavailable' && chat.type === 'individual' && (
                                <div className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background", presenceColor[contact.presence])} />
                             )}
                           </div>

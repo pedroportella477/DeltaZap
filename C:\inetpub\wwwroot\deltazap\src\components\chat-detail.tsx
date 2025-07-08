@@ -201,7 +201,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
             <MessageBubble 
               key={message.id} 
               message={{...message, sender: {id: message.senderId, name: roster.find(r => r.jid === message.senderId)?.name || message.senderId, avatar: ''} }} 
-              chatType={'individual'}
+              chatType={chatData?.type || 'individual'}
               onReply={handleReply}
               onForward={handleForward}
               searchQuery={searchQuery}

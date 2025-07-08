@@ -17,8 +17,8 @@ import Image from 'next/image';
 import { useXmpp } from '@/context/xmpp-context';
 
 interface MessageBubbleProps {
-  message: MessageType & { sender: { id: string, name: string, avatar: string } };
-  chatType: 'individual';
+  message: MessageType;
+  chatType: 'individual' | 'group';
   onReply: (message: MessageType) => void;
   onForward: (message: MessageType) => void;
   searchQuery?: string;
@@ -131,7 +131,7 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
                 "bg-card": !isYou && isDocument,
               })}
             >
-              {message.sender && (
+              {!isYou && chatType === 'group' && message.sender && (
                 <p className="text-xs font-semibold text-primary mb-1">{message.sender.name}</p>
               )}
               
