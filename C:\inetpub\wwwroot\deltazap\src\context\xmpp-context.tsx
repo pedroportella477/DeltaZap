@@ -133,29 +133,23 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
     
-    if (stanza.is('message') && stanza.getChild('body')) {
+    if (stanza.is('message') && stanza.getChild('body') && userId) {
+      const typeAttr = stanza.getAttr('type');
       const fromJid = stanza.getAttr('from');
-      const bareFromJid = fromJid.split('/')[0];
       const body = stanza.getChildText('body');
-      const type = (stanza.getChildText('type') as Message['type']) || 'text';
+      const msgType = (stanza.getChildText('type') as Message['type']) || 'text';
       const fileName = stanza.getChildText('fileName');
-      
-      const isChatActive = bareFromJid === activeChatId && isWindowFocused;
 
-      if (!isChatActive && Notification.permission === 'granted') {
-          const contact = roster.find(r => r.jid === bareFromJid);
-          const title = contact?.name || bareFromJid;
-          const notification = new Notification(title, {
-              body: type === 'text' ? body : 'Enviou uma mídia...',
-              icon: '/icon.png',
-              tag: bareFromJid,
-          });
-          notification.onclick = () => {
-              window.focus();
-          };
-      }
+      if (typeAttr === 'chat') {
+        const bareFromJid = fromJid.split('/')[0];
+        const isChatActive = bareFromJid === activeChatId && isWindowFocused;
 
-      if (stanza.getAttr('type') === 'chat' && userId) {
+        if (!isChatActive && Notification.permission === 'granted') {
+            const contact = roster.find(r => r.jid === bareFromJid);
+            const title = contact?.name || bareFromJid;
+            new Notification(title, { body: msgType === 'text' ? body : 'Enviou uma mídia...', icon: '/icon.png', tag: bareFromJid });
+        }
+
         const newMessage: Omit<Message, 'id'> = {
           chatId: bareFromJid,
           senderId: bareFromJid,
@@ -163,10 +157,9 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           timestamp: serverTimestamp(),
           read: isChatActive,
           reactions: {},
-          type,
+          type: msgType,
           fileName,
         };
-
         addMessage(userId, newMessage);
 
         setChats(prevChats => {
@@ -177,28 +170,64 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (chatIndex > -1) {
             const updatedChat = { ...newChats[chatIndex] };
             updatedChat.messages = [...updatedChat.messages, fullMessage];
-            if (!isChatActive) {
-                updatedChat.unreadCount = (updatedChat.unreadCount || 0) + 1;
-            }
+            if (!isChatActive) updatedChat.unreadCount = (updatedChat.unreadCount || 0) + 1;
             newChats[chatIndex] = updatedChat;
           } else {
             const contact = roster.find(r => r.jid === bareFromJid);
-            const newChat: Chat = {
-              id: bareFromJid,
-              type: 'individual',
-              name: contact?.name || bareFromJid,
+            newChats.push({
+              id: bareFromJid, type: 'individual', name: contact?.name || bareFromJid,
               avatar: `https://placehold.co/100x100.png`,
               participants: [{ userId: bareFromJid, role: 'member' }],
-              messages: [fullMessage],
-              unreadCount: 1,
-            };
-            newChats.push(newChat);
+              messages: [fullMessage], unreadCount: 1,
+            });
+          }
+          return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
+        });
+
+      } else if (typeAttr === 'groupchat') {
+        const roomJid = fromJid.split('/')[0];
+        const senderNickname = fromJid.split('/')[1];
+
+        if (!senderNickname) return; // Ignore messages without a nickname (e.g. subject changes)
+
+        const isChatActive = roomJid === activeChatId && isWindowFocused;
+
+        if (!isChatActive && Notification.permission === 'granted') {
+            const chat = chats.find(c => c.id === roomJid);
+            const title = chat?.name || roomJid;
+            new Notification(title, { body: `${senderNickname}: ${msgType === 'text' ? body : 'Enviou uma mídia...'}`, icon: '/icon.png', tag: roomJid });
+        }
+
+        const newMessage: Omit<Message, 'id'> = {
+          chatId: roomJid, senderId: senderNickname, content: body,
+          timestamp: serverTimestamp(), read: isChatActive, reactions: {},
+          type: msgType, fileName, sender: { name: senderNickname, id: senderNickname, avatar: '' }
+        };
+        addMessage(userId, newMessage);
+
+        setChats(prevChats => {
+          const chatIndex = prevChats.findIndex(c => c.id === roomJid);
+          let newChats = [...prevChats];
+          const fullMessage = { ...newMessage, id: stanza.getAttr('id') || `msg${Date.now()}` }
+
+          if (chatIndex > -1) {
+            const updatedChat = { ...newChats[chatIndex] };
+            updatedChat.messages = [...updatedChat.messages, fullMessage];
+            const myUsername = jid?.split('@')[0];
+            if (!isChatActive && senderNickname !== myUsername) updatedChat.unreadCount = (updatedChat.unreadCount || 0) + 1;
+            newChats[chatIndex] = updatedChat;
+          } else {
+            newChats.push({
+              id: roomJid, type: 'group', name: roomJid.split('@')[0],
+              avatar: `https://placehold.co/100x100.png`, participants: [],
+              messages: [fullMessage], unreadCount: 1,
+            });
           }
           return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
         });
       }
     }
-  }, [activeChatId, isWindowFocused, roster, userId]);
+  }, [activeChatId, isWindowFocused, roster, userId, jid, chats]);
 
 
   const connect = useCallback(async (jidStr: string, passwordStr: string) => {
@@ -362,8 +391,11 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (jid === 'master@deltazap.com') console.warn("Master user cannot send messages.");
       return;
     };
+    
+    const chat = chats.find(c => c.id === to);
+    const messageType = chat?.type === 'group' ? 'groupchat' : 'chat';
 
-    const messageStanza = xml('message', { to, type: 'chat', id: `msg${Date.now()}` }, 
+    const messageStanza = xml('message', { to, type: messageType, id: `msg${Date.now()}` }, 
         xml('body', {}, body),
     );
     
@@ -378,45 +410,49 @@ export const XmppProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     xmppClient.send(messageStanza);
 
-    const sentMessageData: Omit<Message, 'id'> = {
-      chatId: to,
-      senderId: userId,
-      content: body,
-      timestamp: serverTimestamp(),
-      read: true,
-      reactions: {},
-      type,
-      fileName,
-    };
-    
-    addMessage(userId, sentMessageData);
-    
-    const sentMessage = { ...sentMessageData, id: messageStanza.getAttr('id') };
-
-    setChats(prevChats => {
-      const chatIndex = prevChats.findIndex(c => c.id === to);
-      let newChats = [...prevChats];
-
-      if (chatIndex > -1) {
-        const updatedChat = { ...newChats[chatIndex] };
-        updatedChat.messages = [...updatedChat.messages, sentMessage];
-        newChats[chatIndex] = updatedChat;
-      } else {
-        const contact = roster.find(r => r.jid === to);
-        const newChat: Chat = {
-          id: to,
-          type: 'individual',
-          name: contact?.name || to,
-          avatar: `https://placehold.co/100x100.png`,
-          participants: [{ userId: to, role: 'member' }],
-          messages: [sentMessage],
-          unreadCount: 0,
+    // Only add individual messages to state immediately. Group messages wait for the echo.
+    if (messageType === 'chat') {
+        const sentMessageData: Omit<Message, 'id'> = {
+          chatId: to,
+          senderId: userId,
+          content: body,
+          timestamp: serverTimestamp(),
+          read: true,
+          reactions: {},
+          type,
+          fileName,
+          sender: {id: userId, name: 'Você', avatar: ''}
         };
-        newChats.push(newChat);
-      }
-      return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
-    });
-  }, [xmppClient, userId, roster, jid]);
+        
+        addMessage(userId, sentMessageData);
+        
+        const sentMessage = { ...sentMessageData, id: messageStanza.getAttr('id') };
+
+        setChats(prevChats => {
+          const chatIndex = prevChats.findIndex(c => c.id === to);
+          let newChats = [...prevChats];
+
+          if (chatIndex > -1) {
+            const updatedChat = { ...newChats[chatIndex] };
+            updatedChat.messages = [...updatedChat.messages, sentMessage];
+            newChats[chatIndex] = updatedChat;
+          } else {
+            const contact = roster.find(r => r.jid === to);
+            const newChat: Chat = {
+              id: to,
+              type: 'individual',
+              name: contact?.name || to,
+              avatar: `https://placehold.co/100x100.png`,
+              participants: [{ userId: to, role: 'member' }],
+              messages: [sentMessage],
+              unreadCount: 0,
+            };
+            newChats.push(newChat);
+          }
+          return newChats.sort((a,b) => (b.lastUpdated?.toMillis() || 0) - (a.lastUpdated?.toMillis() || 0));
+        });
+    }
+  }, [xmppClient, userId, roster, jid, chats]);
 
   const markChatAsRead = useCallback((chatId: string) => {
     setActiveChatId(chatId);

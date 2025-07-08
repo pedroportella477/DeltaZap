@@ -124,7 +124,7 @@ export function ChatDetail({ chatId }: { chatId: string }) {
     setForwardingMessage(message);
   };
 
-  if (!contactInfo && !chatData) {
+  if (!chatData) {
     return (
       <div className="flex h-full items-center justify-center">
         <p>Inicie uma conversa selecionando um contato.</p>
@@ -148,9 +148,11 @@ export function ChatDetail({ chatId }: { chatId: string }) {
       </Avatar>
       <div className="ml-3">
         <h2 className="font-semibold font-headline">{chatName}</h2>
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          {contactPresenceStatus}
-        </p>
+        {chatData.type === 'individual' && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {contactPresenceStatus}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -197,16 +199,23 @@ export function ChatDetail({ chatId }: { chatId: string }) {
 
       <ScrollArea className="flex-grow" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
-          {displayedMessages.map((message) => (
-            <MessageBubble 
-              key={message.id} 
-              message={{...message, sender: {id: message.senderId, name: roster.find(r => r.jid === message.senderId)?.name || message.senderId, avatar: ''} }} 
-              chatType={chatData?.type || 'individual'}
-              onReply={handleReply}
-              onForward={handleForward}
-              searchQuery={searchQuery}
-            />
-          ))}
+          {displayedMessages.map((message) => {
+              const senderInfo = message.sender || {
+                  id: message.senderId,
+                  name: roster.find(r => r.jid === message.senderId)?.name || message.senderId.split('@')[0] || message.senderId,
+                  avatar: ''
+              };
+              return (
+                  <MessageBubble 
+                    key={message.id} 
+                    message={{...message, sender: senderInfo}}
+                    chatType={chatData?.type || 'individual'}
+                    onReply={handleReply}
+                    onForward={handleForward}
+                    searchQuery={searchQuery}
+                  />
+              )
+          })}
           {isSearching && displayedMessages.length === 0 && (
              <div className="text-center text-muted-foreground p-8">
                 <p>Nenhuma mensagem encontrada para "{searchQuery}"</p>

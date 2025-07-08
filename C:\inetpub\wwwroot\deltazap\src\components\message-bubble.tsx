@@ -17,7 +17,7 @@ import Image from 'next/image';
 import { useXmpp } from '@/context/xmpp-context';
 
 interface MessageBubbleProps {
-  message: MessageType;
+  message: MessageType & { sender: { id: string, name: string, avatar: string } };
   chatType: 'individual' | 'group';
   onReply: (message: MessageType) => void;
   onForward: (message: MessageType) => void;
@@ -49,7 +49,9 @@ export default function MessageBubble({ message, chatType, onReply, onForward, s
   const { userId } = useXmpp();
   const [reactions, setReactions] = useState(message.reactions || {});
   const [isMounted, setIsMounted] = useState(false);
-  const isYou = message.senderId === userId;
+  
+  const myUsername = userId?.split('@')[0];
+  const isYou = message.senderId === userId || (chatType === 'group' && message.senderId === myUsername);
 
   useEffect(() => {
     setIsMounted(true);
