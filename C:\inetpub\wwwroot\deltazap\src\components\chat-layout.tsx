@@ -205,7 +205,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               {children}
             </div>
             <footer className="flex items-center justify-between py-2 px-4 text-xs text-muted-foreground border-t bg-background">
-                <span>© {new Date().getFullYear()} - Desenvolvido por Pedro Portella Dev</span>
+                <span>© {new Date().getFullYear()} - <a href="https://github.com/pedroportella477" target="_blank" rel="noopener noreferrer" className="hover:underline">Desenvolvido por Pedro Portella Dev</a></span>
                 <Clock />
             </footer>
         </SidebarInset>
