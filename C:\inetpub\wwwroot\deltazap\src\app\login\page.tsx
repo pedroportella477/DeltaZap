@@ -112,7 +112,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
        <footer className="absolute bottom-4 text-center text-xs text-muted-foreground">
-         © {new Date().getFullYear()} - <a href="https://github.com/pedroportella477" target="_blank" rel="noopener noreferrer" className="hover:underline">Desenvolvido por Pedro Portella Dev</a>
+          © {new Date().getFullYear()} Pedro H F Portella. Todos os direitos reservados.
       </footer>
     </div>
   );
