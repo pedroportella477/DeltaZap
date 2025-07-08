@@ -141,22 +141,6 @@ export type DemandComment = {
   createdAt: any; // Firestore Timestamp
 };
 
-
-export const users: User[] = [
-  { id: "user1", name: "Você", avatar: "https://placehold.co/100x100.png", status: "Codificando algo legal! ✨", presence: "online" },
-  { id: "user2", name: "Larissa Mendes", avatar: "https://placehold.co/100x100.png", status: "De férias!", presence: "offline" },
-  { id: "user3", name: "Pedro Portella", avatar: "https://placehold.co/100x100.png", status: "Ocupado com o trabalho.", presence: "ocupado" },
-  { id: "user4", name: "Tamiris Mendes", avatar: "https://placehold.co/100x100.png", status: "Na academia.", presence: "online" },
-];
-
-const now = new Date();
-
-export const statuses: Status[] = [
-    { id: 'status1', userId: 'user2', content: 'Aproveitando a vida na praia! 🏖️', timestamp: new Date(now.getTime() - 2 * 60 * 60000).toISOString(), type: 'text' },
-    { id: 'status2', userId: 'user3', content: 'https://placehold.co/300x500.png', timestamp: new Date(now.getTime() - 5 * 60 * 60000).toISOString(), type: 'image' },
-    { id: 'status3', userId: 'user4', content: 'Novo recorde pessoal! #fitness', timestamp: new Date(now.getTime() - 8 * 60 * 60000).toISOString(), type: 'text' },
-];
-
 const noteColors = [
   'bg-yellow-200/50 dark:bg-yellow-800/30 border-yellow-400/50',
   'bg-blue-200/50 dark:bg-blue-800/30 border-blue-400/50',
@@ -253,6 +237,59 @@ export async function deleteNote(noteId: string): Promise<void> {
 export function addReaction(chatId: string, messageId: string, emoji: string) {
   console.log(`Reacted with ${emoji} to message ${messageId} in chat ${chatId}`);
 }
+
+// --- Status Functions ---
+export async function addStatus(userId: string, content: string, type: 'text' | 'image'): Promise<Status> {
+  const newStatusData = {
+    userId,
+    content,
+    type,
+    timestamp: serverTimestamp(),
+  };
+  const docRef = await addDoc(collection(db, 'statuses'), newStatusData);
+  const docSnap = await getDoc(docRef);
+  
+  const data = docSnap.data();
+  return { 
+      id: docSnap.id, 
+      ...data,
+      timestamp: data?.timestamp.toDate().toISOString() 
+  } as Status;
+}
+
+export async function getStatusesForRoster(userIds: string[]): Promise<Status[]> {
+  if (userIds.length === 0) {
+    return [];
+  }
+  
+  const statusPromises = userIds.map(uid => {
+    const statusesCol = collection(db, 'statuses');
+    const q = query(
+      statusesCol, 
+      where('userId', '==', uid), 
+      orderBy('timestamp', 'desc'), 
+      limit(1)
+    );
+    return getDocs(q);
+  });
+
+  const snapshots = await Promise.all(statusPromises);
+  const allStatuses: Status[] = [];
+
+  snapshots.forEach(snapshot => {
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      allStatuses.push({
+        id: doc.id,
+        ...data,
+        timestamp: data.timestamp.toDate().toISOString(),
+      } as Status);
+    });
+  });
+
+  return allStatuses.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
 
 // --- Appointments Functions ---
 export async function getAppointments(userId: string): Promise<Appointment[]> {
