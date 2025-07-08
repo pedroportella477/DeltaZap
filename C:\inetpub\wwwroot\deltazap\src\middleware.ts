@@ -15,7 +15,10 @@ export function middleware(request: NextRequest) {
 
   // Handle root path redirection
   if (pathname === '/') {
-      return NextResponse.redirect(new URL(authToken ? '/chat' : '/login', request.url));
+      if (authToken) {
+        return NextResponse.redirect(new URL('/chat', request.url));
+      }
+      return NextResponse.redirect(new URL('/login', request.url));
   }
 
   // Handle Admin Routes
@@ -63,7 +66,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Roda em todas as rotas, exceto as de sistema da API e arquivos estáticos
+    // Run on all routes except for API, Next.js internal static files, and image optimization files
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }

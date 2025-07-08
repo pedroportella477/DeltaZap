@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getStatusesForRoster, addStatus, Status } from "@/lib/data";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Camera, Pencil, Wand2, Sparkles, Loader2 } from "lucide-react";
+import { Camera, Pencil, Upload } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +20,17 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { generateImage } from '@/ai/flows/generate-image-flow';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2 } from 'lucide-react';
 import { useXmpp } from '@/context/xmpp-context';
 
+const fileToDataUrl = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function StatusPage() {
   const [statuses, setStatuses] = useState<Status[]>([]);
@@ -33,36 +39,34 @@ export default function StatusPage() {
   const { userId, roster, jid } = useXmpp();
 
   const [isMounted, setIsMounted] = useState(false);
-  const [isAiImageDialogOpen, setIsAiImageDialogOpen] = useState(false);
-  const [generationPrompt, setGenerationPrompt] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isTextStatusDialogOpen, setIsTextStatusDialogOpen] = useState(false);
-
+  const [isImageStatusDialogOpen, setIsImageStatusDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  
   const refreshStatuses = useCallback(async () => {
-    if (roster.length > 0 && userId) {
+    if (roster.length > 0 || userId) {
       setIsLoading(true);
       try {
-        const userIdsToFetch = [...new Set([userId, ...roster.map(r => r.jid)])];
+        const userIdsToFetch = [...new Set([userId!, ...roster.map(r => r.jid)])];
         const fetchedStatuses = await getStatusesForRoster(userIdsToFetch);
-        setStatuses(fetchedStatuses);
+        const sortedStatuses = fetchedStatuses.sort((a,b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+        setStatuses(sortedStatuses);
       } catch (error) {
         console.error("Failed to fetch statuses:", error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os status." });
       } finally {
         setIsLoading(false);
       }
-    } else if (userId) {
-        // If roster is empty, at least try to fetch own status
-        const fetchedStatuses = await getStatusesForRoster([userId]);
-        setStatuses(fetchedStatuses);
-        setIsLoading(false);
     }
   }, [roster, userId, toast]);
 
   useEffect(() => {
     setIsMounted(true);
-    refreshStatuses();
-  }, [refreshStatuses]);
+    if(userId) {
+        refreshStatuses();
+    }
+  }, [refreshStatuses, userId]);
   
   const myLastStatus = statuses.find(s => s.userId === userId);
   const recentUpdates = statuses.filter(s => s.userId !== userId);
@@ -73,10 +77,11 @@ export default function StatusPage() {
   }
 
   const getUserForStatus = (statusUserId: string) => {
+    if (statusUserId === userId) return currentUserInfo;
     const contact = roster.find(r => r.jid === statusUserId);
     return {
       name: contact?.name || statusUserId.split('@')[0] || 'Usuário desconhecido',
-      avatar: 'https://placehold.co/100x100.png', // Avatars are not in roster, using placeholder
+      avatar: 'https://placehold.co/100x100.png',
     };
   };
 
@@ -87,39 +92,36 @@ export default function StatusPage() {
     const text = formData.get('status-text') as string;
 
     if (text.trim()) {
-      const newStatus = await addStatus(userId, text, 'text');
-      setStatuses(prev => [newStatus, ...prev.filter(s => s.userId !== userId)]);
-      toast({ title: "Status publicado!" });
-      setIsTextStatusDialogOpen(false);
+      setIsSubmitting(true);
+      try {
+        await addStatus(userId, text, 'text');
+        await refreshStatuses();
+        toast({ title: "Status publicado!" });
+        setIsTextStatusDialogOpen(false);
+      } catch (error) {
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível publicar o status." });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  const handleAddImageStatus = async (imageUrl: string) => {
-    if (!userId) return;
-    const newStatus = await addStatus(userId, imageUrl, 'image');
-    setStatuses(prev => [newStatus, ...prev.filter(s => s.userId !== userId)]);
-    toast({ title: "Status publicado!" });
-    setIsAiImageDialogOpen(false);
-    setGenerationPrompt("");
-  };
-  
-  const handleGenerateImage = async () => {
-    if (!generationPrompt) {
-        toast({ variant: 'destructive', title: 'Prompt vazio', description: 'Por favor, descreva a imagem que você quer gerar.' });
-        return;
-    }
-    setIsGenerating(true);
+  const handleAddImageStatus = async () => {
+    if (!userId || !imageFile) return;
+    setIsSubmitting(true);
     try {
-        const imageUrl = await generateImage(generationPrompt);
-        await handleAddImageStatus(imageUrl);
-    } catch (error) {
-        console.error(error);
-        toast({ variant: 'destructive', title: 'Erro na Geração', description: 'Não foi possível gerar a imagem. Tente novamente.' });
+        const imageUrl = await fileToDataUrl(imageFile);
+        await addStatus(userId, imageUrl, 'image');
+        await refreshStatuses();
+        toast({ title: "Status publicado!" });
+        setIsImageStatusDialogOpen(false);
+        setImageFile(null);
+    } catch(error) {
+       toast({ variant: "destructive", title: "Erro", description: "Não foi possível publicar a imagem." });
     } finally {
-        setIsGenerating(false);
+       setIsSubmitting(false);
     }
-  }
-
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -142,7 +144,7 @@ export default function StatusPage() {
                     <p className="font-semibold">Meu status</p>
                     <p className="text-sm text-muted-foreground">
                       {myLastStatus
-                        ? (isMounted ? formatDistanceToNow(new Date(myLastStatus.timestamp), { locale: ptBR, addSuffix: true }) : '...')
+                        ? (isMounted ? formatDistanceToNow(myLastStatus.timestamp.toDate(), { locale: ptBR, addSuffix: true }) : '...')
                         : "Toque para adicionar uma atualização"
                       }
                     </p>
@@ -185,33 +187,40 @@ export default function StatusPage() {
                     <DialogContent>
                         <DialogHeader><DialogTitle>Criar status de texto</DialogTitle></DialogHeader>
                          <form onSubmit={handleAddTextStatus}>
-                            <Textarea name="status-text" placeholder="O que você está pensando?" className="min-h-[200px] text-lg focus-visible:ring-transparent border-0 bg-secondary" />
+                            <Textarea name="status-text" placeholder="O que você está pensando?" className="min-h-[200px] text-lg focus-visible:ring-transparent border-0 bg-secondary" disabled={isSubmitting} />
                             <DialogFooter className="mt-4">
-                              <Button type="submit">Publicar</Button>
+                              <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Publicar
+                              </Button>
                             </DialogFooter>
                          </form>
                     </DialogContent>
                 </Dialog>
-                <Dialog open={isAiImageDialogOpen} onOpenChange={setIsAiImageDialogOpen}>
+                <Dialog open={isImageStatusDialogOpen} onOpenChange={(isOpen) => { setIsImageStatusDialogOpen(isOpen); if(!isOpen) setImageFile(null); }}>
                     <DialogTrigger asChild>
                         <Button size="icon" className="rounded-full shadow-lg h-14 w-14"><Camera className="h-6 w-6"/></Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2"><Sparkles /> Criar status com IA</DialogTitle>
+                          <DialogTitle className="flex items-center gap-2"><Camera /> Criar status com imagem</DialogTitle>
                         </DialogHeader>
-                        <div className="flex flex-col items-center justify-center gap-4 py-4">
-                          <p className="text-muted-foreground text-center text-sm">Descreva a imagem que você quer postar no seu status.</p>
-                            <Input 
-                              placeholder="Ex: um dia chuvoso visto da janela" 
-                              value={generationPrompt} 
-                              onChange={(e) => setGenerationPrompt(e.target.value)}
-                              disabled={isGenerating}
-                            />
-                            <Button onClick={handleGenerateImage} disabled={isGenerating} className="w-full">
-                              {isGenerating ? 'Gerando...' : 'Gerar e Publicar'}
+                         <div className="py-4 space-y-4">
+                             <Input 
+                               type="file" 
+                               accept="image/*"
+                               onChange={(e) => setImageFile(e.target.files ? e.target.files[0] : null)}
+                               disabled={isSubmitting}
+                             />
+                              {imageFile && (
+                                <div className='flex justify-center'>
+                                  <Image src={URL.createObjectURL(imageFile)} alt="Preview" width={200} height={200} className="rounded-md object-contain" />
+                                </div>
+                              )}
+                            <Button onClick={handleAddImageStatus} disabled={!imageFile || isSubmitting} className="w-full">
+                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Publicar Imagem
                             </Button>
-                            {isGenerating && <Skeleton className="h-20 w-full rounded-md" />}
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -238,13 +247,13 @@ export default function StatusPage() {
                     <DialogTrigger asChild>
                       <div className="flex items-center space-x-4 mb-4 cursor-pointer hover:bg-muted/50 p-2 rounded-lg -ml-2">
                         <Avatar className="h-14 w-14 border-2 border-accent">
-                          <AvatarImage src={user.avatar} data-ai-hint="person face"/>
+                          <AvatarImage src={status.type === 'image' ? status.content : user.avatar} data-ai-hint="person face"/>
                           <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-semibold">{user.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {isMounted ? formatDistanceToNow(new Date(status.timestamp), { locale: ptBR, addSuffix: true }) : '...'}
+                            {isMounted ? formatDistanceToNow(status.timestamp.toDate(), { locale: ptBR, addSuffix: true }) : '...'}
                           </p>
                         </div>
                       </div>

@@ -58,10 +58,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const { disconnect, jid, userId, sendPresence, sendUnavailablePresence } = useXmpp();
   const [presence, setPresence] = useState('online');
 
-  const currentUser = { 
-    name: userId === 'master@deltazap.com' ? 'Master' : (jid?.split('@')[0] || 'Usuário'), 
-    avatar: 'https://placehold.co/100x100.png' 
-  };
+  const currentUserName = userId === 'master@deltazap.com' ? 'Master' : (jid?.split('@')[0] || 'Usuário');
 
   const handleLogout = async () => {
     await disconnect();
@@ -167,11 +164,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start gap-2 p-2 h-auto">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src={currentUser?.avatar} alt={currentUser?.name} />
-                        <AvatarFallback>{currentUser?.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={'https://placehold.co/100x100.png'} alt={currentUserName} />
+                        <AvatarFallback>{currentUserName.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="group-data-[collapsible=icon]:hidden text-left">
-                        <p className="font-semibold text-sm">{currentUser?.name}</p>
+                        <p className="font-semibold text-sm">{currentUserName}</p>
                         <p className="text-xs text-muted-foreground">{jid?.split('@')[0]}</p>
                     </div>
                 </Button>

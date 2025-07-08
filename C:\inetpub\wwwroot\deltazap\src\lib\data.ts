@@ -13,7 +13,8 @@ import {
   serverTimestamp,
   getDoc,
   setDoc,
-  limit
+  limit,
+  Timestamp
 } from 'firebase/firestore';
 
 // Core XMPP presence states
@@ -67,7 +68,7 @@ export type Status = {
   id: string;
   userId: string;
   content: string;
-  timestamp: string;
+  timestamp: any; // Firestore Timestamp
   type: 'text' | 'image';
 };
 
@@ -184,7 +185,9 @@ export async function addMessage(userId: string, message: Omit<Message, 'id'>) {
     await addDoc(messagesCol, message);
 
     await setDoc(chatRef, { 
-        id: chatId, 
+        id: chatId,
+        type: message.chatId.includes('@conference.') ? 'group' : 'individual',
+        name: message.chatId.split('@')[0],
         lastUpdated: message.timestamp 
     }, { merge: true });
 }
@@ -236,6 +239,7 @@ export async function deleteNote(noteId: string): Promise<void> {
 
 // Mock function for adding a reaction
 export function addReaction(chatId: string, messageId: string, emoji: string) {
+  // In a real app, this would update Firestore
   console.log(`Reacted with ${emoji} to message ${messageId} in chat ${chatId}`);
 }
 
@@ -250,11 +254,9 @@ export async function addStatus(userId: string, content: string, type: 'text' | 
   const docRef = await addDoc(collection(db, 'statuses'), newStatusData);
   const docSnap = await getDoc(docRef);
   
-  const data = docSnap.data();
   return { 
       id: docSnap.id, 
-      ...data,
-      timestamp: data?.timestamp.toDate().toISOString() 
+      ...docSnap.data(),
   } as Status;
 }
 
@@ -263,11 +265,14 @@ export async function getStatusesForRoster(userIds: string[]): Promise<Status[]>
     return [];
   }
   
+  const twentyFourHoursAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+
   const statusPromises = userIds.map(uid => {
     const statusesCol = collection(db, 'statuses');
     const q = query(
       statusesCol, 
-      where('userId', '==', uid), 
+      where('userId', '==', uid),
+      where('timestamp', '>=', twentyFourHoursAgo),
       orderBy('timestamp', 'desc'), 
       limit(1)
     );
@@ -279,16 +284,14 @@ export async function getStatusesForRoster(userIds: string[]): Promise<Status[]>
 
   snapshots.forEach(snapshot => {
     snapshot.forEach(doc => {
-      const data = doc.data();
       allStatuses.push({
         id: doc.id,
-        ...data,
-        timestamp: data.timestamp.toDate().toISOString(),
+        ...doc.data(),
       } as Status);
     });
   });
 
-  return allStatuses.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return allStatuses.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
 }
 
 
@@ -376,7 +379,7 @@ export async function deleteInternalLink(id: string): Promise<void> {
 export async function addDemand(demandData: Omit<Demand, 'id' | 'createdAt' | 'updatedAt'>): Promise<Demand> {
   const dataWithTimestamps = {
     ...demandData,
-    status: 'Pendente',
+    status: 'Pendente' as DemandStatus,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };

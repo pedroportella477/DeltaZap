@@ -24,7 +24,6 @@ export default function AdminLoginPage() {
       Cookies.set('admin-auth', 'true', { expires: 1, path: '/' });
       toast({ title: "Login bem-sucedido!" });
       router.push('/admin/dashboard');
-      router.refresh(); 
     } else {
       setError('Credenciais inválidas.');
       toast({ variant: 'destructive', title: 'Erro de Login', description: 'Credenciais inválidas.' });
