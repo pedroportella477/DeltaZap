@@ -33,35 +33,39 @@ DeltaZap é uma plataforma de comunicação corporativa construída com Next.js,
 - Um servidor XMPP (ex: Openfire) configurado e em execução.
 - Um banco de dados PostgreSQL acessível remotamente.
 
-### Passos
+### 1. Clone o repositório
+```bash
+git clone <url-do-repositorio>
+cd <nome-do-repositorio>
+```
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone <url-do-repositorio>
-    cd <nome-do-repositorio>
-    ```
+### 2. Instale as dependências
+```bash
+npm install
+```
 
-2.  **Instale as dependências:**
-    ```bash
-    npm install
-    ```
+### 3. Configure as Variáveis de Ambiente
+Para que a aplicação funcione corretamente, especialmente em produção, é crucial configurar as variáveis de ambiente. Crie um arquivo chamado `.env.local` na raiz do seu projeto (na mesma pasta do `package.json`) e adicione as seguintes variáveis:
 
-3.  **Configure as Variáveis de Ambiente:**
-    Crie um arquivo `.env.local` na raiz do projeto e adicione a seguinte variável:
-    ```env
-    POSTGRES_URL="postgres://SEU_USUARIO:SUA_SENHA@SEU_HOST:SUA_PORTA/SEU_BANCO"
-    ```
-    Substitua os placeholders pelas suas credenciais do PostgreSQL.
+```env
+# Conexão com o Banco de Dados PostgreSQL
+# Substitua os placeholders pelas suas credenciais.
+POSTGRES_URL="postgres://SEU_USUARIO:SUA_SENHA@SEU_HOST:SUA_PORTA/SEU_BANCO"
 
-4.  **Configure o Servidor XMPP (para desenvolvimento):**
-    - Acesse o painel administrativo em `/admin/login` (usuário: `master`, senha: `@Delta477`).
-    - Navegue até "Configurações" e insira o IP e a porta WebSocket do seu servidor Openfire. Essas configurações são salvas localmente no seu navegador.
+# Chave de API para as funcionalidades de Inteligência Artificial (Google AI)
+# Obtenha sua chave em https://aistudio.google.com/app/apikey
+GOOGLE_API_KEY="SUA_CHAVE_DE_API_AQUI"
+```
+**Importante:** Este arquivo `.env.local` não deve ser enviado para o controle de versão (Git) por segurança.
 
-5.  **Execute o servidor de desenvolvimento:**
-    ```bash
-    npm run dev
-    ```
+### 4. Configure o Servidor XMPP (para desenvolvimento)
+- Acesse o painel administrativo em `/admin/login` (usuário: `master`, senha: `@Delta477`).
+- Navegue até "Configurações" e insira o IP e a porta WebSocket do seu servidor Openfire. Essas configurações são salvas localmente no seu navegador para facilitar os testes.
 
+### 5. Execute o servidor de desenvolvimento
+```bash
+npm run dev
+```
 O aplicativo estará disponível em `http://localhost:9002`.
 
 ## Deploy em Produção (Linux)
@@ -70,14 +74,17 @@ O aplicativo estará disponível em `http://localhost:9002`.
     ```bash
     npm run build
     ```
-    O Next.js gerará uma saída otimizada para produção, incluindo um diretório `.next/standalone` que contém tudo o que é necessário para rodar o servidor.
+    Este comando gera uma pasta `.next/standalone` otimizada para produção, contendo apenas os arquivos necessários para rodar o servidor.
 
-2.  **Configuração do Ambiente:**
-    - Certifique-se de que a variável de ambiente `POSTGRES_URL` está definida no seu servidor de produção.
-    - O servidor XMPP deve estar acessível a partir do ambiente de produção.
+2.  **Configuração do Ambiente no Servidor:**
+    - Copie a pasta `.next/standalone` para o seu servidor.
+    - Na mesma pasta onde você colocou o diretório `standalone`, crie o arquivo `.env.local` com as variáveis `POSTGRES_URL` e `GOOGLE_API_KEY`, conforme descrito na seção "Configuração das Variáveis de Ambiente".
+    - Copie o arquivo `ecosystem.config.js` para o mesmo local.
 
 3.  **Execução do Servidor:**
     Use um gerenciador de processos como `pm2` para rodar o servidor Node.js. O arquivo `ecosystem.config.js` está incluído para facilitar este processo.
     ```bash
     pm2 start ecosystem.config.js
     ```
+
+**Observação:** A configuração `output: 'standalone'` no `next.config.ts` garante que a pasta de build seja autocontida. Você não precisa instalar `node_modules` no servidor, apenas copiar a pasta `standalone` e fornecer as variáveis de ambiente.
