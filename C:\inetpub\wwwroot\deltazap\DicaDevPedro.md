@@ -1,6 +1,6 @@
-# DicaDevPedro - Guia de Instalação e Deploy do DeltaZap
+# DicaDevPedro - Guia de Instalação e Deploy do DeltaZap em Ubuntu 24.04
 
-Este documento fornece um passo a passo detalhado para configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux.
+Este documento fornece um passo a passo detalhado para configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux (Ubuntu 24.04 LTS).
 
 ## Visão Geral
 
@@ -20,74 +20,46 @@ Para persistência de dados (histórico de conversas, anotações, status, etc.)
 
 ---
 
-## Parte 1: Pré-requisitos do Servidor
+## Parte 1: Pré-requisitos do Servidor (Ubuntu 24.04 LTS)
 
-Antes de iniciar a instalação, garanta que seu servidor (recomendado Ubuntu/Debian) possui os seguintes softwares instalados:
+Antes de iniciar a instalação, acesse seu servidor via SSH e garanta que ele possui os seguintes softwares instalados:
 
-1.  **Node.js:** Versão 18.x ou mais recente.
+1.  **Atualizar o Sistema**
+    É sempre uma boa prática começar atualizando os pacotes do seu servidor.
     ```bash
-    # Exemplo de instalação no Ubuntu/Debian
+    sudo apt update && sudo apt upgrade -y
+    ```
+
+2.  **Node.js:** Versão 18.x ou mais recente.
+    ```bash
+    # Instalar o curl para baixar o script de instalação do Node.js
+    sudo apt install -y curl
+    
+    # Adicionar o repositório do Node.js 18.x
     curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    
+    # Instalar o Node.js
     sudo apt-get install -y nodejs
     ```
-2.  **Servidor XMPP:** Um servidor Openfire (ou similar) instalado, em execução e acessível pela rede. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
-3.  **Servidor PostgreSQL:** Um banco de dados PostgreSQL instalado e acessível pela rede a partir do servidor onde o DeltaZap será executado.
-4.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção.
+
+3.  **Servidor XMPP (Openfire):** Garanta que você tenha um servidor Openfire (ou similar) instalado, em execução e acessível pela rede a partir do seu servidor Ubuntu. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
+
+4.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa.
+
+5.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção de forma estável.
     ```bash
     sudo npm install pm2 -g
     ```
 
 ---
 
-## Parte 2: Configuração para Desenvolvimento Local
+## Parte 2: Preparação e Deploy da Aplicação
 
-Para executar o projeto em sua máquina local para desenvolvimento e testes.
-
-1.  **Clonar o Repositório**
-    ```bash
-    git clone <URL_DO_REPOSITORIO>
-    cd deltazap
-    ```
-
-2.  **Instalar Dependências**
-    ```bash
-    npm install
-    ```
-
-3.  **Configurar Variáveis de Ambiente**
-    - Crie um arquivo chamado `.env.local` na raiz do projeto.
-    - Adicione as seguintes variáveis, substituindo pelos seus dados de desenvolvimento:
-
-    ```env
-    # Conexão com o Banco de Dados PostgreSQL (pode ser local ou remoto)
-    POSTGRES_URL="postgres://SEU_USUARIO:SUA_SENHA@SEU_HOST:SUA_PORTA/SEU_BANCO"
-
-    # Chave de API para as funcionalidades de Inteligência Artificial (Google AI)
-    # Obtenha sua chave em https://aistudio.google.com/app/apikey
-    GOOGLE_API_KEY="SUA_CHAVE_DE_API_AQUI"
-    ```
-    **Importante:** Este arquivo não deve ser enviado para o controle de versão (Git).
-
-4.  **Configurar Conexão XMPP Local**
-    - Acesse o painel administrativo em `/admin/login` (usuário: `master`, senha: `@Delta477`).
-    - Vá para "Configurações" e insira o IP e a porta WebSocket do seu servidor Openfire.
-    - **Atenção:** Esta configuração é salva apenas no seu navegador (`localStorage`) e serve para facilitar os testes locais.
-
-5.  **Executar o Servidor de Desenvolvimento**
-    ```bash
-    npm run dev
-    ```
-    O aplicativo estará disponível em `http://localhost:9002`.
-
----
-
-## Parte 3: Deploy em Servidor de Produção Linux
-
-Siga estes passos para implantar a aplicação em seu servidor Linux.
+Siga estes passos para preparar e implantar a aplicação no seu servidor.
 
 ### Passo 1: Build da Aplicação (na sua máquina local)
 
-Execute o comando de build para gerar os arquivos otimizados para produção.
+Primeiro, gere os arquivos otimizados para produção na sua máquina de desenvolvimento.
 
 ```bash
 npm run build
@@ -98,16 +70,18 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
 
 1.  **Crie um diretório para a aplicação** no seu servidor.
     ```bash
+    # O diretório /var/www é uma localização padrão para aplicações web
     sudo mkdir -p /var/www/deltazap
-    cd /var/www/deltazap
     ```
 
 2.  **Copie os arquivos necessários** da sua máquina local para o diretório `/var/www/deltazap` no servidor. Você pode usar `scp`, `rsync` ou outro método de sua preferência.
+
+    **Arquivos e pastas a serem copiados:**
     - A pasta inteira: `.next/standalone`
     - A pasta inteira: `.next/static`
     - A pasta: `public`
     - O arquivo: `ecosystem.config.js`
-    - O arquivo: `package.json` (necessário para o PM2 identificar o nome da aplicação)
+    - O arquivo: `package.json`
 
     Após a cópia, a estrutura no servidor deve ser semelhante a:
     ```
@@ -120,15 +94,21 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     └── package.json
     ```
 
-3.  **Crie o arquivo de variáveis de ambiente de produção** **diretamente no servidor**.
+3.  **Crie o arquivo de variáveis de ambiente** **diretamente no servidor**.
     ```bash
+    # Use o nano ou outro editor de texto para criar o arquivo
     sudo nano /var/www/deltazap/.env.local
     ```
-    Adicione o conteúdo com suas credenciais de **produção**:
+    Adicione o conteúdo a seguir, substituindo pelas suas credenciais de **produção**:
     ```env
+    # URL de conexão com o seu banco de dados PostgreSQL remoto
     POSTGRES_URL="postgres://SEU_USUARIO_PROD:SUA_SENHA_PROD@SEU_HOST_PROD:SUA_PORTA_PROD/SEU_BANCO_PROD"
+
+    # Chave de API para as funcionalidades de Inteligência Artificial
+    # Obtenha sua chave em https://aistudio.google.com/app/apikey
     GOOGLE_API_KEY="SUA_CHAVE_DE_API_PROD"
     ```
+    Pressione `Ctrl+X`, depois `Y` e `Enter` para salvar e sair do editor nano.
 
 ### Passo 3: Iniciar a Aplicação com PM2
 
@@ -148,9 +128,12 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     ```
     Você deve ver o processo `deltazap` com o status `online`.
 
-4.  **(Opcional) Salvar a lista de processos do PM2** para que a aplicação reinicie automaticamente com o servidor.
+4.  **(Opcional, mas recomendado) Salvar a lista de processos do PM2** para que a aplicação reinicie automaticamente com o servidor.
     ```bash
     pm2 save
+    
+    # Para garantir que o serviço do pm2 inicie com o boot do sistema
+    pm2 startup
     ```
 
 ### Passo 4: Configuração de Firewall e Reverse Proxy (Recomendado)
@@ -161,7 +144,7 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
   - Configurar um domínio personalizado (ex: `chat.suaempresa.com`).
   - Gerenciar certificados SSL (HTTPS) facilmente com ferramentas como o Let's Encrypt.
 
-A aplicação agora está em execução no seu servidor Linux!
+A aplicação agora está em execução e pronta para ser acessada!
 
 ---
 
