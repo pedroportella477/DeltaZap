@@ -1,6 +1,6 @@
-# Guia de Instalação e Deploy do DeltaZap em Ubuntu 24.04
+# Guia de Instalação e Deploy do DeltaZap em Ubuntu 24.04 (via GitHub)
 
-Este documento fornece um passo a passo detalhado para configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux (Ubuntu 24.04 LTS).
+Este documento fornece um passo a passo detalhado para clonar o repositório, configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux (Ubuntu 24.04 LTS).
 
 ## Visão Geral
 
@@ -30,7 +30,12 @@ Antes de iniciar a instalação, acesse seu servidor via SSH e garanta que ele p
     sudo apt update && sudo apt upgrade -y
     ```
 
-2.  **Node.js:** Versão 18.x ou mais recente.
+2.  **Git:** Para clonar o repositório do projeto.
+    ```bash
+    sudo apt install -y git
+    ```
+
+3.  **Node.js:** Versão 18.x ou mais recente.
     ```bash
     # Instalar o curl para baixar o script de instalação do Node.js
     sudo apt install -y curl
@@ -42,113 +47,104 @@ Antes de iniciar a instalação, acesse seu servidor via SSH e garanta que ele p
     sudo apt-get install -y nodejs
     ```
 
-3.  **Servidor XMPP (Openfire):** Garanta que você tenha um servidor Openfire (ou similar) instalado, em execução e acessível pela rede a partir do seu servidor Ubuntu. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
-
-4.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa. **Você pode nomear o banco de dados como `deltazap` ou `deltazap_db` para facilitar a identificação.**
-
-5.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção de forma estável.
+4.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção de forma estável.
     ```bash
     sudo npm install pm2 -g
     ```
 
+5.  **Servidor XMPP (Openfire):** Garanta que você tenha um servidor Openfire (ou similar) instalado, em execução e acessível pela rede a partir do seu servidor Ubuntu. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
+
+6.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa.
+
 ---
 
-## Parte 2: Preparação e Deploy da Aplicação
+## Parte 2: Instalação e Configuração da Aplicação
 
 Siga estes passos para preparar e implantar a aplicação no seu servidor.
 
-### Passo 1: Build da Aplicação (na sua máquina local)
+### Passo 1: Clonar o Repositório
 
-Primeiro, gere os arquivos otimizados para produção na sua máquina de desenvolvimento.
-
-```bash
-npm run build
-```
-Este comando cria uma pasta `.next/standalone`, que contém uma versão autocontida do servidor Node.js, e a pasta `.next/static` com os assets da aplicação.
-
-### Passo 2: Preparar o Servidor de Produção
-
-1.  **Crie um diretório para a aplicação** no seu servidor.
+1.  Crie um diretório para a aplicação e navegue até ele. O diretório `/var/www` é uma localização padrão para aplicações web.
     ```bash
-    # O diretório /var/www é uma localização padrão para aplicações web
-    sudo mkdir -p /var/www/deltazap
+    sudo mkdir -p /var/www/
+    cd /var/www/
     ```
 
-2.  **Copie os arquivos necessários** da sua máquina local para o diretório `/var/www/deltazap` no servidor. Você pode usar `scp`, `rsync` ou outro método de sua preferência.
-
-    **Arquivos e pastas a serem copiados:**
-    - A pasta inteira: `.next/standalone`
-    - A pasta inteira: `.next/static`
-    - A pasta: `public`
-    - O arquivo: `ecosystem.config.js`
-    - O arquivo: `package.json`
-
-    Após a cópia, a estrutura no servidor deve ser semelhante a:
-    ```
-    /var/www/deltazap/
-    ├── .next/
-    │   ├── standalone/
-    │   └── static/
-    ├── public/
-    ├── ecosystem.config.js
-    └── package.json
-    ```
-
-3.  **Crie o arquivo de variáveis de ambiente** **diretamente no servidor**.
-    > **Importante:** Este é o passo mais crítico. É aqui que você informa à aplicação como se conectar ao seu banco de dados e a outros serviços. A aplicação não funcionará sem este arquivo.
+2.  Clone o repositório do GitHub.
     ```bash
-    # Use o nano ou outro editor de texto para criar o arquivo
-    sudo nano /var/www/deltazap/.env.local
+    sudo git clone https://github.com/pedroportella477/DeltaZap.git deltazap
     ```
-    Adicione o conteúdo a seguir, substituindo pelas suas credenciais de **produção**:
+
+3.  Navegue para o diretório do projeto clonado.
+    ```bash
+    cd deltazap
+    ```
+
+4.  Defina as permissões corretas para o diretório (substitua `seu_usuario` pelo seu nome de usuário no Ubuntu).
+    ```bash
+    sudo chown -R seu_usuario:seu_usuario /var/www/deltazap
+    ```
+
+### Passo 2: Instalar Dependências e Fazer o Build
+
+1.  Instale todas as dependências do projeto.
+    ```bash
+    npm install
+    ```
+
+2.  Execute o comando de build para gerar os arquivos otimizados para produção.
+    ```bash
+    npm run build
+    ```
+
+### Passo 3: Configurar as Variáveis de Ambiente
+
+> **Importante:** Este é o passo mais crítico. É aqui que você informa à aplicação como se conectar ao seu banco de dados e a outros serviços. A aplicação não funcionará sem este arquivo.
+
+1.  Crie o arquivo `.env.local` na raiz do projeto.
+    ```bash
+    nano .env.local
+    ```
+
+2.  Adicione o conteúdo a seguir ao arquivo, **substituindo os valores pelos dados do seu ambiente de produção**:
     ```env
     # URL de conexão com o seu banco de dados PostgreSQL remoto.
-    # Substitua 'SEU_BANCO_PROD' pelo nome do banco que você criou (ex: deltazap).
-    POSTGRES_URL="postgres://SEU_USUARIO_PROD:SUA_SENHA_PROD@SEU_HOST_PROD:SUA_PORTA_PROD/SEU_BANCO_PROD"
+    # Ex: postgres://user:password@host:port/database
+    POSTGRES_URL="SUA_URL_DE_CONEXAO_POSTGRESQL"
 
-    # Chave de API para as funcionalidades de Inteligência Artificial
+    # Chave de API para as funcionalidades de Inteligência Artificial do Google.
     # Obtenha sua chave em https://aistudio.google.com/app/apikey
-    GOOGLE_API_KEY="SUA_CHAVE_DE_API_PROD"
+    GOOGLE_API_KEY="SUA_CHAVE_DE_API_DO_GOOGLE"
     ```
     Pressione `Ctrl+X`, depois `Y` e `Enter` para salvar e sair do editor nano.
 
-### Passo 3: Iniciar a Aplicação com PM2
+### Passo 4: Iniciar a Aplicação com PM2
 
-1.  Navegue até o diretório da aplicação no servidor.
+1.  Com o `pm2` instalado globalmente, inicie a aplicação usando o script `start` do `package.json`.
     ```bash
-    cd /var/www/deltazap
+    pm2 start npm --name "deltazap" -- start
     ```
+    **Observação sobre o Banco de Dados:** Na primeira vez que a aplicação for iniciada, ela tentará se conectar ao PostgreSQL e **criará automaticamente todas as tabelas necessárias**. Você não precisa criar nenhuma tabela manualmente. Verifique os logs do PM2 (`pm2 logs deltazap`) para confirmar que a conexão foi bem-sucedida.
 
-2.  Inicie a aplicação usando o arquivo de configuração do PM2.
-    ```bash
-    pm2 start ecosystem.config.js
-    ```
-    **Importante: Criação Automática do Banco de Dados**
-    Na primeira vez que a aplicação for iniciada (após a configuração do `.env.local`), ela tentará se conectar ao PostgreSQL e **criará automaticamente todas as tabelas necessárias**. Você não precisa criar nenhuma tabela manualmente. As tabelas criadas são: `notes`, `appointments`, `support_materials`, `internal_links`, `demands`, `statuses`, `user_chats` e `user_messages`.
-    
-    Verifique os logs do PM2 (`pm2 logs deltazap`) para confirmar que a conexão foi bem-sucedida e que não houve erros.
-
-3.  **Verifique se a aplicação está rodando.**
+2.  Verifique se a aplicação está rodando.
     ```bash
     pm2 list
     ```
     Você deve ver o processo `deltazap` com o status `online`.
 
-4.  **(Opcional, mas recomendado) Salvar a lista de processos do PM2** para que a aplicação reinicie automaticamente com o servidor.
+3.  (Recomendado) Salve a lista de processos do PM2 para que a aplicação reinicie automaticamente com o servidor.
     ```bash
     pm2 save
     
-    # Para garantir que o serviço do pm2 inicie com o boot do sistema
-    pm2 startup
+    # Execute o comando que o PM2 sugerir para configurar o serviço de inicialização.
+    # Geralmente será algo como:
+    sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u seu_usuario --hp /home/seu_usuario
     ```
 
-### Passo 4: Configuração de Firewall e Reverse Proxy (Recomendado)
+### Passo 5: Configuração de Firewall e Acesso
 
-- A aplicação estará rodando na porta `3000` (conforme definido em `ecosystem.config.js`). Certifique-se de que esta porta está liberada no seu firewall se precisar acessá-la diretamente: `sudo ufw allow 3000`.
-- Para um ambiente de produção profissional, é altamente recomendável usar um **servidor web como Nginx ou Apache como um reverse proxy**. Isso permite:
-  - Servir sua aplicação na porta 80 (HTTP) e 443 (HTTPS).
-  - Configurar um domínio personalizado (ex: `chat.suaempresa.com`).
-  - Gerenciar certificados SSL (HTTPS) facilmente com ferramentas como o Let's Encrypt.
+- A aplicação estará rodando na porta `3000` por padrão. Certifique-se de que esta porta está liberada no seu firewall se precisar acessá-la diretamente: `sudo ufw allow 3000`.
+- Para um ambiente profissional, é altamente recomendável usar um **servidor web como Nginx ou Apache como um reverse proxy**. Isso permite servir sua aplicação na porta 80 (HTTP) e 443 (HTTPS) e configurar um domínio personalizado.
 
 A aplicação agora está em execução e pronta para ser acessada!
 
