@@ -122,7 +122,10 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     ```bash
     pm2 start ecosystem.config.js
     ```
-    **Importante:** Na primeira vez que a aplicação for iniciada, ela tentará criar as tabelas necessárias no banco de dados PostgreSQL. Verifique os logs do PM2 (`pm2 logs deltazap`) para confirmar que não houve erros.
+    **Importante: Criação Automática do Banco de Dados**
+    Na primeira vez que a aplicação for iniciada, ela tentará se conectar ao PostgreSQL e **criará automaticamente todas as tabelas necessárias**. Você não precisa criar nenhuma tabela manualmente. As tabelas criadas são: `notes`, `appointments`, `support_materials`, `internal_links`, `demands`, `statuses`, `user_chats` e `user_messages`.
+    
+    Verifique os logs do PM2 (`pm2 logs deltazap`) para confirmar que a conexão foi bem-sucedida e que não houve erros.
 
 3.  **Verifique se a aplicação está rodando.**
     ```bash
