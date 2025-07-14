@@ -1,6 +1,6 @@
 # Guia de Instalação e Deploy do DeltaZap em Ubuntu 24.04
 
-Este documento fornece um passo a passo detalhado para instalar, configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux (Ubuntu 24.04 LTS).
+Este documento fornece um passo a passo detalhado para instalar, configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux (Ubuntu 24.04 LTS) a partir de um repositório Git.
 
 ## Visão Geral
 
@@ -41,15 +41,20 @@ Antes de iniciar a instalação, acesse seu servidor via SSH e garanta que ele p
     # Instalar o Node.js
     sudo apt-get install -y nodejs
     ```
+    
+3.  **Git:** Para clonar o repositório da aplicação.
+    ```bash
+    sudo apt install -y git
+    ```
 
-3.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção de forma estável.
+4.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção de forma estável.
     ```bash
     sudo npm install pm2 -g
     ```
 
-4.  **Servidor XMPP (Openfire):** Garanta que você tenha um servidor Openfire (ou similar) instalado, em execução e acessível pela rede a partir do seu servidor Ubuntu. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
+5.  **Servidor XMPP (Openfire):** Garanta que você tenha um servidor Openfire (ou similar) instalado, em execução e acessível pela rede a partir do seu servidor Ubuntu. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
 
-5.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa.
+6.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa.
 
 ---
 
@@ -57,47 +62,39 @@ Antes de iniciar a instalação, acesse seu servidor via SSH e garanta que ele p
 
 Siga estes passos para preparar e implantar a aplicação.
 
-### Passo 1: Copiar os Arquivos da Aplicação
+### Passo 1: Clonar o Repositório
 
-1.  Primeiro, execute o build da aplicação no seu computador de desenvolvimento para gerar os arquivos otimizados.
-    ```bash
-    npm run build
-    ```
-2.  Crie um diretório para a aplicação no seu servidor. O diretório `/var/www` é uma localização padrão.
+1.  Crie um diretório para a aplicação no seu servidor. O diretório `/var/www` é uma localização padrão.
     ```bash
     # Exemplo de comando a ser executado no servidor Ubuntu via SSH
-    sudo mkdir -p /var/www/deltazap
+    sudo mkdir -p /var/www
     ```
-3.  Copie os seguintes arquivos e pastas do seu projeto local para o diretório `/var/www/deltazap` no servidor. Você pode usar uma ferramenta como `scp` ou FileZilla.
+    
+2.  Navegue até o diretório e clone o projeto.
+    ```bash
+    cd /var/www
+    sudo git clone https://github.com/pedroportella477/DeltaZap.git deltazap
+    ```
 
-    -   `.next/` (a pasta inteira)
-    -   `public/` (a pasta inteira)
-    -   `package.json`
-    -   `next.config.ts`
-
-    > A estrutura de arquivos no servidor, dentro de `/var/www/deltazap`, deve ficar assim:
-    > ```
-    > /var/www/deltazap/
-    > ├── .next/
-    > ├── public/
-    > ├── next.config.ts
-    > └── package.json
-    > ```
-
-4.  Acesse o servidor via SSH e navegue para o diretório da aplicação.
+3.  Acesse o diretório da aplicação.
     ```bash
     cd /var/www/deltazap
     ```
 
-### Passo 2: Instalar Dependências de Produção
+### Passo 2: Instalar Dependências e Construir a Aplicação
 
-Instale apenas as dependências necessárias para rodar a aplicação em produção.
-```bash
-npm install --production
-```
+1.  Instale todas as dependências do projeto.
+    ```bash
+    npm install
+    ```
+    
+2.  Execute o build da aplicação para gerar os arquivos otimizados para produção.
+    ```bash
+    npm run build
+    ```
 
-### Passo 3: Crie o arquivo de variáveis de ambiente
-> **Atenção:** Este é o passo mais crítico. É aqui que você informa à aplicação como se conectar ao seu banco de dados. A aplicação não funcionará sem este arquivo.
+### Passo 3: Criar o Arquivo de Variáveis de Ambiente
+> **Atenção:** Este é o passo mais crítico. É aqui que você informa à aplicação como se conectar ao seu banco de dados e aos serviços de IA. A aplicação não funcionará sem este arquivo.
 
 1.  No servidor, dentro do diretório `/var/www/deltazap`, crie o arquivo `.env.local`.
     ```bash
