@@ -95,6 +95,7 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     ```
 
 3.  **Crie o arquivo de variáveis de ambiente** **diretamente no servidor**.
+    > **Importante:** Este é o passo mais crítico. É aqui que você informa à aplicação como se conectar ao seu banco de dados e a outros serviços. A aplicação não funcionará sem este arquivo.
     ```bash
     # Use o nano ou outro editor de texto para criar o arquivo
     sudo nano /var/www/deltazap/.env.local
@@ -123,7 +124,7 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     pm2 start ecosystem.config.js
     ```
     **Importante: Criação Automática do Banco de Dados**
-    Na primeira vez que a aplicação for iniciada, ela tentará se conectar ao PostgreSQL e **criará automaticamente todas as tabelas necessárias**. Você não precisa criar nenhuma tabela manualmente. As tabelas criadas são: `notes`, `appointments`, `support_materials`, `internal_links`, `demands`, `statuses`, `user_chats` e `user_messages`.
+    Na primeira vez que a aplicação for iniciada (após a configuração do `.env.local`), ela tentará se conectar ao PostgreSQL e **criará automaticamente todas as tabelas necessárias**. Você não precisa criar nenhuma tabela manualmente. As tabelas criadas são: `notes`, `appointments`, `support_materials`, `internal_links`, `demands`, `statuses`, `user_chats` e `user_messages`.
     
     Verifique os logs do PM2 (`pm2 logs deltazap`) para confirmar que a conexão foi bem-sucedida e que não houve erros.
 
