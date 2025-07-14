@@ -44,7 +44,7 @@ Antes de iniciar a instalação, acesse seu servidor via SSH e garanta que ele p
 
 3.  **Servidor XMPP (Openfire):** Garanta que você tenha um servidor Openfire (ou similar) instalado, em execução e acessível pela rede a partir do seu servidor Ubuntu. É crucial que a **porta WebSocket (geralmente 7070)** esteja habilitada e liberada no firewall.
 
-4.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa.
+4.  **Servidor PostgreSQL:** Garanta que você tenha um banco de dados PostgreSQL instalado e acessível pela rede. Você precisará da URL de conexão completa. **Você pode nomear o banco de dados como `deltazap` ou `deltazap_db` para facilitar a identificação.**
 
 5.  **PM2 (Process Manager):** Para manter a aplicação rodando em produção de forma estável.
     ```bash
@@ -101,7 +101,8 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     ```
     Adicione o conteúdo a seguir, substituindo pelas suas credenciais de **produção**:
     ```env
-    # URL de conexão com o seu banco de dados PostgreSQL remoto
+    # URL de conexão com o seu banco de dados PostgreSQL remoto.
+    # Substitua 'SEU_BANCO_PROD' pelo nome do banco que você criou (ex: deltazap).
     POSTGRES_URL="postgres://SEU_USUARIO_PROD:SUA_SENHA_PROD@SEU_HOST_PROD:SUA_PORTA_PROD/SEU_BANCO_PROD"
 
     # Chave de API para as funcionalidades de Inteligência Artificial
@@ -121,6 +122,7 @@ Este comando cria uma pasta `.next/standalone`, que contém uma versão autocont
     ```bash
     pm2 start ecosystem.config.js
     ```
+    **Importante:** Na primeira vez que a aplicação for iniciada, ela tentará criar as tabelas necessárias no banco de dados PostgreSQL. Verifique os logs do PM2 (`pm2 logs deltazap`) para confirmar que não houve erros.
 
 3.  **Verifique se a aplicação está rodando.**
     ```bash
