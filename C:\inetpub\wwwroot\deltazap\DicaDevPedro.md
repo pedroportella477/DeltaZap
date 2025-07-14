@@ -1,4 +1,4 @@
-# DicaDevPedro - Guia de Instalação e Deploy do DeltaZap em Ubuntu 24.04
+# Guia de Instalação e Deploy do DeltaZap em Ubuntu 24.04
 
 Este documento fornece um passo a passo detalhado para configurar, executar e implantar a plataforma de comunicação DeltaZap em um ambiente de produção Linux (Ubuntu 24.04 LTS).
 
